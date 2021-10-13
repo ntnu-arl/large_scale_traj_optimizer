@@ -1,6 +1,7 @@
 #include "traj_min_jerk.hpp"
 #include "traj_min_snap.hpp"
 #include "random_route_gen.hpp"
+#include "ros_visualizer.hpp"
 
 #include <chrono>
 
@@ -15,7 +16,6 @@
 using namespace std;
 using namespace ros;
 using namespace Eigen;
-
 
 VectorXd allocateTime(const MatrixXd &wayPs,
                       double vel,
@@ -62,13 +62,14 @@ VectorXd allocateTime(const MatrixXd &wayPs,
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "example1_node");
+    ros::init(argc, argv, "min_snap");
     ros::NodeHandle nh_;
 
-    RandomRouteGenerator routeGen(Array3d(-16, -16, -16), Array3d(16, 16, 16));
+    RosVisualizer rv(&nh_);
+    // rv.marker_pub = nh_.advertise<visualization_msgs::Marker>("waypoints", 10);
+    // ros::Publisher marker_pub = nh_.advertise<visualization_msgs::Marker>("waypoints", 10);
 
-    min_jerk::JerkOpt jerkOpt;
-    min_jerk::Trajectory minJerkTraj;
+    RandomRouteGenerator routeGen(Array3d(-16, -16, -16), Array3d(16, 16, 16));
 
     min_snap::SnapOpt snapOpt;
     min_snap::Trajectory minSnapTraj;
@@ -76,53 +77,49 @@ int main(int argc, char **argv)
     MatrixXd route;
     VectorXd ts;
     Matrix3d iS, fS;
+
     Eigen::Matrix<double, 3, 4> iSS, fSS;
     iS.setZero();
     fS.setZero();
     Vector3d zeroVec(0.0, 0.0, 0.0);
-    Rate lp(1000);
+    Rate r(1);
     int groupSize = 100;
 
     std::chrono::high_resolution_clock::time_point tc0, tc1, tc2;
     double d0, d1;
 
-    for (int i = 2; i <= 128 && ok(); i++)
+    while (ros::ok())
     {
-        d0 = d1 = 0.0;
-        for (int j = 0; j < groupSize && ok(); j++)
+        for (int i = 2; i <= 5 && ok(); i++)
         {
-            route = routeGen.generate(i);
-            iS.col(0) << route.leftCols<1>();
-            fS.col(0) << route.rightCols<1>();
-            ts = allocateTime(route, 3.0, 3.0);
+            d0 = d1 = 0.0;
+            for (int j = 0; j < groupSize && ok(); j++)
+            {
+                route = routeGen.generate(i);
+                std::cout << route << std::endl;
 
-            iSS << iS, Eigen::MatrixXd::Zero(3, 1);
-            fSS << fS, Eigen::MatrixXd::Zero(3, 1);
+                iS.col(0) << route.leftCols<1>();
+                fS.col(0) << route.rightCols<1>();
+                ts = allocateTime(route, 3.0, 3.0);
 
-            tc0 = std::chrono::high_resolution_clock::now();
-            jerkOpt.reset(iS, fS, route.cols() - 1);
-            jerkOpt.generate(route.block(0, 1, 3, i - 1), ts);
-            jerkOpt.getTraj(minJerkTraj);
-            tc1 = std::chrono::high_resolution_clock::now();
+                iSS << iS, Eigen::MatrixXd::Zero(3, 1);
+                fSS << fS, Eigen::MatrixXd::Zero(3, 1);
 
-            d0 += std::chrono::duration_cast<std::chrono::duration<double>>(tc1 - tc0).count();
+                tc1 = std::chrono::high_resolution_clock::now();
+                snapOpt.reset(iSS, fSS, route.cols() - 1);
+                snapOpt.generate(route.block(0, 1, 3, i - 1), ts);
+                snapOpt.getTraj(minSnapTraj);
+                tc2 = std::chrono::high_resolution_clock::now();
 
-            tc1 = std::chrono::high_resolution_clock::now();
-            snapOpt.reset(iSS, fSS, route.cols() - 1);
-            snapOpt.generate(route.block(0, 1, 3, i - 1), ts);
-            snapOpt.getTraj(minSnapTraj);
-            tc2 = std::chrono::high_resolution_clock::now();
+                d1 += std::chrono::duration_cast<std::chrono::duration<double>>(tc2 - tc1).count();
+            }
 
-            d1 += std::chrono::duration_cast<std::chrono::duration<double>>(tc2 - tc1).count();
+            std::cout << "Piece Number: " << i
+                      << " MinSnap Comp. Time: " << d1 / groupSize << " s" << std::endl;
         }
-
-        std::cout << "Piece Number: " << i
-                  << " MinJerk Comp. Time: " << d0 / groupSize << " s"
-                  << " MinSnap Comp. Time: " << d1 / groupSize << " s" << std::endl;
-
+        rv.plot();
         ros::spinOnce();
-        lp.sleep();
+        r.sleep();
     }
-
     return 0;
 }

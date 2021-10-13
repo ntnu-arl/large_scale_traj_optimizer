@@ -10,6 +10,7 @@ find_package(Eigen3 REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  visualization_msgs
 )
 
 include_directories(
@@ -25,7 +26,7 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
-add_executable(${PROJECT_NAME}_node src/example1_node.cpp)
+add_executable(${PROJECT_NAME}_node src/min_snap.cpp)
 
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
