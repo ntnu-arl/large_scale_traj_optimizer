@@ -90,13 +90,14 @@ int main(int argc, char **argv)
 
     while (ros::ok())
     {
-        for (int i = 2; i <= 5 && ok(); i++)
+        for (int i = 2; i <= 10 && ok(); i++)
         {
             d0 = d1 = 0.0;
             for (int j = 0; j < groupSize && ok(); j++)
             {
                 route = routeGen.generate(i);
-                std::cout << route << std::endl;
+                // std::cout << route << std::endl;
+
 
                 iS.col(0) << route.leftCols<1>();
                 fS.col(0) << route.rightCols<1>();
@@ -114,10 +115,10 @@ int main(int argc, char **argv)
                 d1 += std::chrono::duration_cast<std::chrono::duration<double>>(tc2 - tc1).count();
             }
 
-            std::cout << "Piece Number: " << i
-                      << " MinSnap Comp. Time: " << d1 / groupSize << " s" << std::endl;
+            // std::cout << "Piece Number: " << i
+            //           << " MinSnap Comp. Time: " << d1 / groupSize << " s" << std::endl;
         }
-        rv.plot();
+        rv.plot(route);
         ros::spinOnce();
         r.sleep();
     }

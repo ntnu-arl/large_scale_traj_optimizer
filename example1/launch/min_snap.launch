@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
-    <node pkg="example1" type="example1_node" name="min_snap" output="screen">
-    </node>
+    <arg name="rviz_en" default="true" />
+
+    <node pkg="example1" type="example1_node" name="min_snap" output="screen"></node>
+
+    <group if="$(arg rviz_en)">
+        <node pkg="rviz" type="rviz" name="rviz" args="-d $(find example1)/rviz/traj.rviz" output="screen" />
+    </group>
+
 </launch>
