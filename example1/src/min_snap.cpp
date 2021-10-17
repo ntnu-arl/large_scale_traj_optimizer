@@ -1,7 +1,6 @@
-#include "traj_min_jerk.hpp"
 #include "traj_min_snap.hpp"
 #include "random_route_gen.hpp"
-#include "ros_visualizer.hpp"
+#include "vis_utils.hpp"
 
 #include <chrono>
 
@@ -64,12 +63,13 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "min_snap");
     ros::NodeHandle nh_;
+    ros::NodeHandle pnh_("~");
 
-    RosVisualizer rv(&nh_);
-    // rv.marker_pub = nh_.advertise<visualization_msgs::Marker>("waypoints", 10);
-    // ros::Publisher marker_pub = nh_.advertise<visualization_msgs::Marker>("waypoints", 10);
+    VisUtils vis_utils(&nh_);
 
-    RandomRouteGenerator routeGen(Array3d(-16, -16, -16), Array3d(16, 16, 16));
+    int l_side = 5;
+    // WP generation only inside a cube of dimension l_side
+    RandomRouteGenerator routeGen(Array3d(-l_side, -l_side, -l_side), Array3d(l_side, l_side, l_side));
 
     min_snap::SnapOpt snapOpt;
     min_snap::Trajectory minSnapTraj;
@@ -82,43 +82,43 @@ int main(int argc, char **argv)
     iS.setZero();
     fS.setZero();
     Vector3d zeroVec(0.0, 0.0, 0.0);
-    Rate r(1);
-    int groupSize = 100;
+    Rate r(0.5);
+    // int groupSize = 100;
 
     std::chrono::high_resolution_clock::time_point tc0, tc1, tc2;
-    double d0, d1;
+    double d0;
 
     while (ros::ok())
     {
-        for (int i = 2; i <= 10 && ok(); i++)
-        {
-            d0 = d1 = 0.0;
-            for (int j = 0; j < groupSize && ok(); j++)
-            {
-                route = routeGen.generate(i);
-                // std::cout << route << std::endl;
+        // Number of random waypoints to generate
+        int n_wp = 4;
+        // Timer initialization
+        d0 = 0.0;
+        // Random waypoints generation
+        route = routeGen.generate(n_wp);
+        // initialState and finalState definition
+        iS.col(0) << route.leftCols<1>();
+        fS.col(0) << route.rightCols<1>();
 
+        // route, vel, acc
+        ts = allocateTime(route, 3.0, 3.0);
 
-                iS.col(0) << route.leftCols<1>();
-                fS.col(0) << route.rightCols<1>();
-                ts = allocateTime(route, 3.0, 3.0);
+        iSS << iS, Eigen::MatrixXd::Zero(3, 1);
+        fSS << fS, Eigen::MatrixXd::Zero(3, 1);
 
-                iSS << iS, Eigen::MatrixXd::Zero(3, 1);
-                fSS << fS, Eigen::MatrixXd::Zero(3, 1);
+        tc1 = std::chrono::high_resolution_clock::now();
+        snapOpt.reset(iSS, fSS, route.cols() - 1);
+        snapOpt.generate(route.block(0, 1, 3, n_wp - 1), ts);
+        snapOpt.getTraj(minSnapTraj);
+        tc2 = std::chrono::high_resolution_clock::now();
 
-                tc1 = std::chrono::high_resolution_clock::now();
-                snapOpt.reset(iSS, fSS, route.cols() - 1);
-                snapOpt.generate(route.block(0, 1, 3, i - 1), ts);
-                snapOpt.getTraj(minSnapTraj);
-                tc2 = std::chrono::high_resolution_clock::now();
+        d0 += std::chrono::duration_cast<std::chrono::duration<double>>(tc2 - tc1).count();
+        std::cout << "Took " << d0 << "s to build the minSnapTraj" << std::endl;
 
-                d1 += std::chrono::duration_cast<std::chrono::duration<double>>(tc2 - tc1).count();
-            }
+        vis_utils.vis_waypoints(route);
+        vis_utils.vis_raw_traj(minSnapTraj.getPositions());
+        vis_utils.vis_traj(minSnapTraj, ts);
 
-            // std::cout << "Piece Number: " << i
-            //           << " MinSnap Comp. Time: " << d1 / groupSize << " s" << std::endl;
-        }
-        rv.plot(route);
         ros::spinOnce();
         r.sleep();
     }
