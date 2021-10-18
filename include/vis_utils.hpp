@@ -151,15 +151,12 @@ public:
             p.x = coords(0, i);
             p.y = coords(1, i);
             p.z = coords(2, i);
-            // Vector3d v_p1 << coords(i,1);
-            // Vector3d v_p1 << coords(i,1);
             segment.points.push_back(p);
             p.x = coords(0, i - 1);
             p.y = coords(1, i - 1);
             p.z = coords(2, i - 1);
             segment.points.push_back(p);
             segment_v.markers.push_back(segment);
-            // tf::pointEigenToMsg(v_p1, p1);
         }
 
         pub_segment_v.publish(segment_v);
@@ -167,7 +164,6 @@ public:
     }
 
     void vis_traj(min_snap::Trajectory &traj, const VectorXd ts)
-    // void visWayPointTraj_jerk( MatrixXd polyCoeff, VectorXd time)
     {
         visualization_msgs::Marker min_snap_traj;
 
@@ -177,9 +173,9 @@ public:
         min_snap_traj.id = 0;
         min_snap_traj.type = visualization_msgs::Marker::SPHERE_LIST;
         min_snap_traj.action = visualization_msgs::Marker::ADD;
-        min_snap_traj.scale.x = 0.5;
-        min_snap_traj.scale.y = 0.5;
-        min_snap_traj.scale.z = 0.5;
+        min_snap_traj.scale.x = 0.25;
+        min_snap_traj.scale.y = 0.25;
+        min_snap_traj.scale.z = 0.25;
         min_snap_traj.pose.orientation.x = 0.0;
         min_snap_traj.pose.orientation.y = 0.0;
         min_snap_traj.pose.orientation.z = 0.0;
@@ -202,19 +198,16 @@ public:
 
         for (int i = 0; i < ts.size(); i++) // go through each Piece
         {
-            cout << traj[i].getCoeffMat() << endl;
+            // cout << sep;
+            // cout << traj[i].getCoeffMat() << endl;
+            // cout << sep;
             for (double t = 0.0; t < ts(i); t += 0.1, count += 1)
             {
-                cout << "i: " << i << " t: " << t << endl;
-                pos = get_positions_from_snap(traj[i].getCoeffMat(), t);
-                cout << "\t[x,y,z] " << endl;
+                pos = traj[i].getPos(t);
                 cur(0) = pt.x = pos(0);
                 cur(1) = pt.y = pos(1);
                 cur(2) = pt.z = pos(2);
-                cout << "["
-                     << cur(0) << ","
-                     << cur(1) << ","
-                     << cur(2) << "]" << endl;
+
                 min_snap_traj.points.push_back(pt);
 
                 if (count)
@@ -222,34 +215,9 @@ public:
                 pre = cur;
             }
         }
+        cout << sep;
         cout << "Trajectory length: " << traj_len << endl;
         pub_min_snap_traj.publish(min_snap_traj);
-    }
-
-    Vector3d get_positions_from_snap(MatrixXd polyCoeff, double t)
-    {
-        Vector3d ret;
-        int poly_order = 8;
-        VectorXd time(poly_order);
-
-        for (int dim = 0; dim < 3; dim++)
-        {
-            VectorXd coeff = polyCoeff.row(dim);
-            // cout << "polyCoeff.row(dim): " << polyCoeff.row(dim) << "\n";
-
-            for (int j = 0; j < poly_order; j++)
-            {
-                if (j == 0)
-                    time(j) = 1.0;
-                else
-                    time(j) = pow(t, j);
-            }
-            ret(dim) = coeff.dot(time);
-        }
-        // cout << "ret: " << endl;
-        // cout << ret << endl;
-
-        return ret;
     }
 
 private:

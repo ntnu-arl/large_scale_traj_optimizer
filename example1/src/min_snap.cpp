@@ -55,7 +55,7 @@ VectorXd allocateTime(const MatrixXd &wayPs,
             durations(k) = dtxyz;
         }
     }
-
+    // cout << "Time allocation vector: " << durations << endl;
     return durations;
 }
 
@@ -82,7 +82,7 @@ int main(int argc, char **argv)
     iS.setZero();
     fS.setZero();
     Vector3d zeroVec(0.0, 0.0, 0.0);
-    Rate r(0.5);
+    Rate r(0.4);
     // int groupSize = 100;
 
     std::chrono::high_resolution_clock::time_point tc0, tc1, tc2;
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         // Number of random waypoints to generate
-        int n_wp = 4;
+        int n_wp = 2;
         // Timer initialization
         d0 = 0.0;
         // Random waypoints generation
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
         tc2 = std::chrono::high_resolution_clock::now();
 
         d0 += std::chrono::duration_cast<std::chrono::duration<double>>(tc2 - tc1).count();
-        std::cout << "Took " << d0 << "s to build the minSnapTraj" << std::endl;
+        ROS_WARN("Took %f s to build the minSnapTraj", d0);
 
         vis_utils.vis_waypoints(route);
         vis_utils.vis_raw_traj(minSnapTraj.getPositions());
