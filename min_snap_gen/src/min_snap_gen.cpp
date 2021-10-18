@@ -60,6 +60,8 @@ int main(int argc, char **argv)
         d0 = 0.0;
         // Random waypoints generation
         route = routeGen.generate(n_wp);
+        cout << "wp: " << endl;
+        cout << route << endl;
         // initialState and finalState definition
         iS.col(0) << route.leftCols<1>();
         fS.col(0) << route.rightCols<1>();
@@ -77,7 +79,7 @@ int main(int argc, char **argv)
         tc2 = std::chrono::high_resolution_clock::now();
 
         d0 += std::chrono::duration_cast<std::chrono::duration<double>>(tc2 - tc1).count();
-        ROS_WARN("Took %f s to build the minSnapTraj", d0);
+        ROS_WARN("Built in %f ms", d0 * 1e3);
 
         vis_utils.vis_waypoints(route);
         vis_utils.vis_raw_traj(minSnapTraj.getPositions());
