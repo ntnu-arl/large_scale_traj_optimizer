@@ -10,7 +10,7 @@
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 #include <string>
-#include "traj_min_snap.hpp"
+#include "min_snap.hpp"
 
 using namespace Eigen;
 using namespace std;
@@ -173,9 +173,9 @@ public:
         min_snap_traj.id = 0;
         min_snap_traj.type = visualization_msgs::Marker::SPHERE_LIST;
         min_snap_traj.action = visualization_msgs::Marker::ADD;
-        min_snap_traj.scale.x = 0.25;
-        min_snap_traj.scale.y = 0.25;
-        min_snap_traj.scale.z = 0.25;
+        min_snap_traj.scale.x = 0.2;
+        min_snap_traj.scale.y = 0.2;
+        min_snap_traj.scale.z = 0.2;
         min_snap_traj.pose.orientation.x = 0.0;
         min_snap_traj.pose.orientation.y = 0.0;
         min_snap_traj.pose.orientation.z = 0.0;

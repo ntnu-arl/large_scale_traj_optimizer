@@ -1,6 +1,7 @@
-#include "traj_min_snap.hpp"
+#include "min_snap.hpp"
 #include "random_route_gen.hpp"
 #include "vis_utils.hpp"
+#include "min_snap_manager.hpp"
 
 #include <chrono>
 
@@ -16,58 +17,23 @@ using namespace std;
 using namespace ros;
 using namespace Eigen;
 
-VectorXd allocateTime(const MatrixXd &wayPs,
-                      double vel,
-                      double acc)
-{
-    int N = (int)(wayPs.cols()) - 1;
-    VectorXd durations(N);
-    if (N > 0)
-    {
-
-        Eigen::Vector3d p0, p1;
-        double dtxyz, D, acct, accd, dcct, dccd, t1, t2, t3;
-        for (int k = 0; k < N; k++)
-        {
-            p0 = wayPs.col(k);
-            p1 = wayPs.col(k + 1);
-            D = (p1 - p0).norm();
-
-            acct = vel / acc;
-            accd = (acc * acct * acct / 2);
-            dcct = vel / acc;
-            dccd = acc * dcct * dcct / 2;
-
-            if (D < accd + dccd)
-            {
-                t1 = sqrt(acc * D) / acc;
-                t2 = (acc * t1) / acc;
-                dtxyz = t1 + t2;
-            }
-            else
-            {
-                t1 = acct;
-                t2 = (D - accd - dccd) / vel;
-                t3 = dcct;
-                dtxyz = t1 + t2 + t3;
-            }
-
-            durations(k) = dtxyz;
-        }
-    }
-    // cout << "Time allocation vector: " << durations << endl;
-    return durations;
-}
-
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "min_snap");
-    ros::NodeHandle nh_;
-    ros::NodeHandle pnh_("~");
+    ros::init(argc, argv, "min_snap_gen");
+    ros::NodeHandle nh;
+    ros::NodeHandle pnh("~");
 
-    VisUtils vis_utils(&nh_);
+    MinSnapManager minSnapMan(nh);
+    VisUtils vis_utils(&nh);
 
-    int l_side = 5;
+    // Number of random waypoints to generate
+    int n_wp = 5;
+    // Lenght of the cube in which to generate wps
+    int l_side = 10;
+
+    pnh.getParam("n_wp", n_wp);
+    pnh.getParam("l_side", l_side);
+
     // WP generation only inside a cube of dimension l_side
     RandomRouteGenerator routeGen(Array3d(-l_side, -l_side, -l_side), Array3d(l_side, l_side, l_side));
 
@@ -90,8 +56,6 @@ int main(int argc, char **argv)
 
     while (ros::ok())
     {
-        // Number of random waypoints to generate
-        int n_wp = 2;
         // Timer initialization
         d0 = 0.0;
         // Random waypoints generation
@@ -101,7 +65,7 @@ int main(int argc, char **argv)
         fS.col(0) << route.rightCols<1>();
 
         // route, vel, acc
-        ts = allocateTime(route, 3.0, 3.0);
+        ts = minSnapMan.allocateTime(route, 3.0, 3.0);
 
         iSS << iS, Eigen::MatrixXd::Zero(3, 1);
         fSS << fS, Eigen::MatrixXd::Zero(3, 1);

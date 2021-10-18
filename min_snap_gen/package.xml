@@ -1,10 +1,10 @@
 <package>
-  <name>example1</name>
+  <name>min_snap_gen</name>
   <author email="wangzhepei@live.com">ZhepeiWang</author>
-  <maintainer email="wangzhepei@live.com">ZhepeiWang</maintainer>
+  <maintainer email="paolo.de.petris@ntnu.com">PaoloDePetris</maintainer>
   <version>0.1.0</version>
   <description>
-      the example1 package
+      the min_snap_gen package
   </description>
   <license>BSD</license>
 

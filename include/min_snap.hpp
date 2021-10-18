@@ -22,8 +22,8 @@
     SOFTWARE.
 */
 
-#ifndef TRAJ_MIN_JERK_HPP
-#define TRAJ_MIN_JERK_HPP
+#ifndef MIN_SNAP_HPP
+#define MIN_SNAP_HPP
 
 #include "root_finder.hpp"
 
@@ -33,11 +33,11 @@
 #include <cmath>
 #include <vector>
 
-namespace min_jerk
+namespace min_snap
 {
 
     // Polynomial order and trajectory dimension are fixed here
-    constexpr int TrajOrder = 5;
+    constexpr int TrajOrder = 7;
     constexpr int TrajDim = 3;
 
     // Type for piece boundary condition and coefficient matrix
@@ -51,14 +51,14 @@ namespace min_jerk
     {
     private:
         // A piece is totally determined by boundary condition and duration
-        // boundCond = [p(0),v(0),a(0),p(T),v(T),a(T)]
+        // boundCond = [p(0),v(0),a(0),j(0),p(T),v(T),a(T),j(T)]
         BoundaryCond boundCond;
         double duration;
 
         // The normalized coefficient is generated from boundCond and duration
         // These members CANNOT be accessed unless through normalizedCoeffMat()
-        // p(t) = c5*t^5 + c4*t^4 + ... + c1*t + c0
-        // nCoeffMat = [c5*T^5,c4*T^4,c3*T^3,c2*T^2,c1*T,c0*1]
+        // p(t) = c7*t^7+c6*t^6 + ... + c1*t + c0
+        // nCoeffMat = [c7*T^7,c6*T^6,c5*T^5,c4*T^4,c3*T^3,c2*T^2,c1*T,c0*1]
         bool synced;
         CoefficientMat nCoeffMat;
         inline const CoefficientMat &normalizedCoeffMat(void)
@@ -67,20 +67,28 @@ namespace min_jerk
             {
                 double t1 = duration;
                 double t2 = t1 * t1;
+                double t3 = t2 * t1;
 
-                // It maps boundary condition to normalized coefficient matrix
-                nCoeffMat.col(0) = 0.5 * (boundCond.col(5) - boundCond.col(2)) * t2 -
-                                   3.0 * (boundCond.col(1) + boundCond.col(4)) * t1 +
-                                   6.0 * (boundCond.col(3) - boundCond.col(0));
-                nCoeffMat.col(1) = (-boundCond.col(5) + 1.5 * boundCond.col(2)) * t2 +
-                                   (8.0 * boundCond.col(1) + 7.0 * boundCond.col(4)) * t1 +
-                                   15.0 * (-boundCond.col(3) + boundCond.col(0));
-                nCoeffMat.col(2) = (0.5 * boundCond.col(5) - 1.5 * boundCond.col(2)) * t2 -
-                                   (6.0 * boundCond.col(1) + 4.0 * boundCond.col(4)) * t1 +
-                                   10.0 * (boundCond.col(3) - boundCond.col(0));
-                nCoeffMat.col(3) = 0.5 * boundCond.col(2) * t2;
-                nCoeffMat.col(4) = boundCond.col(1) * t1;
-                nCoeffMat.col(5) = boundCond.col(0);
+                nCoeffMat.col(0) = (boundCond.col(7) / 6.0 + boundCond.col(3) / 6.0) * t3 +
+                                   (-2.0 * boundCond.col(6) + 2.0 * boundCond.col(2)) * t2 +
+                                   (10.0 * boundCond.col(5) + 10.0 * boundCond.col(1)) * t1 +
+                                   (-20.0 * boundCond.col(4) + 20.0 * boundCond.col(0));
+                nCoeffMat.col(1) = (-0.5 * boundCond.col(7) - boundCond.col(3) / 1.5) * t3 +
+                                   (6.5 * boundCond.col(6) - 7.5 * boundCond.col(2)) * t2 +
+                                   (-34.0 * boundCond.col(5) - 36.0 * boundCond.col(1)) * t1 +
+                                   (70.0 * boundCond.col(4) - 70.0 * boundCond.col(0));
+                nCoeffMat.col(2) = (0.5 * boundCond.col(7) + boundCond.col(3)) * t3 +
+                                   (-7.0 * boundCond.col(6) + 10.0 * boundCond.col(2)) * t2 +
+                                   (39.0 * boundCond.col(5) + 45.0 * boundCond.col(1)) * t1 +
+                                   (-84.0 * boundCond.col(4) + 84.0 * boundCond.col(0));
+                nCoeffMat.col(3) = (-boundCond.col(7) / 6.0 - boundCond.col(3) / 1.5) * t3 +
+                                   (2.5 * boundCond.col(6) - 5.0 * boundCond.col(2)) * t2 +
+                                   (-15.0 * boundCond.col(5) - 20.0 * boundCond.col(1)) * t1 +
+                                   (35.0 * boundCond.col(4) - 35.0 * boundCond.col(0));
+                nCoeffMat.col(4) = boundCond.col(3) * t3 / 6.0;
+                nCoeffMat.col(5) = boundCond.col(2) * t2 / 2.0;
+                nCoeffMat.col(6) = boundCond.col(1) * t1;
+                nCoeffMat.col(7) = boundCond.col(0);
 
                 synced = true;
             }
@@ -768,16 +776,16 @@ namespace min_jerk
         }
     };
 
-    class JerkOpt
+    class SnapOpt
     {
     public:
-        JerkOpt() = default;
-        ~JerkOpt() { A.destroy(); }
+        SnapOpt() = default;
+        ~SnapOpt() { A.destroy(); }
 
     private:
         int N;
         Eigen::Matrix3Xd Ps;
-        Eigen::Matrix3Xd VAs;
+        Eigen::Matrix3Xd VAJs;
         Eigen::VectorXd T;
         BandedSystem A;
         Eigen::MatrixX3d b;
@@ -787,50 +795,63 @@ namespace min_jerk
         Eigen::VectorXd t3;
         Eigen::VectorXd t4;
         Eigen::VectorXd t5;
+        Eigen::VectorXd t6;
+        Eigen::VectorXd t7;
         Eigen::VectorXd cv00, cv01, cv02;
         Eigen::VectorXd cv10, cv11, cv12;
         Eigen::VectorXd cv20, cv21, cv22;
+        Eigen::VectorXd cv30, cv31, cv32;
         Eigen::VectorXd ca00, ca01, ca02;
         Eigen::VectorXd ca10, ca11, ca12;
         Eigen::VectorXd ca20, ca21, ca22;
+        Eigen::VectorXd ca30, ca31, ca32;
+        Eigen::VectorXd cj00, cj01, cj02;
+        Eigen::VectorXd cj10, cj11, cj12;
+        Eigen::VectorXd cj20, cj21, cj22;
+        Eigen::VectorXd cj30, cj31, cj32;
 
     private:
         inline double evalPieceObjective(const Eigen::Array3d &iP,
                                          const Eigen::Array3d &iV,
                                          const Eigen::Array3d &iA,
+                                         const Eigen::Array3d &iJ,
                                          const Eigen::Array3d &fP,
                                          const Eigen::Array3d &fV,
                                          const Eigen::Array3d &fA,
+                                         const Eigen::Array3d &fJ,
                                          const double &duration) const
         {
-            Eigen::VectorXd coeffsJerObjective(5);
-            coeffsJerObjective(0) = (9.0 * iA.square() - 6.0 * iA * fA + 9.0 * fA.square()).sum();
-            coeffsJerObjective(1) = 24.0 * (3.0 * iA * iV - 2.0 * fA * iV + 2.0 * iA * fV - 3.0 * fA * fV).sum();
-            coeffsJerObjective(2) = 24.0 * (8.0 * iV.square() + 14.0 * iV * fV + 8.0 * fV.square() + 5.0 * (iA - fA) * (iP - fP)).sum();
-            coeffsJerObjective(3) = 720.0 * ((iV + fV) * (iP - fP)).sum();
-            coeffsJerObjective(4) = 720.0 * (iP - fP).square().sum();
+            Eigen::VectorXd coeffsSnpObjective(7);
+            coeffsSnpObjective(0) = 8.0 * (2.0 * iJ.square() + iJ * fJ + 2.0 * fJ.square()).sum();
+            coeffsSnpObjective(1) = 120.0 * (iA * (2.0 * iJ + fJ) - fA * (iJ + 2.0 * fJ)).sum();
+            coeffsSnpObjective(2) = 240.0 * (5.0 * iA.square() - 7.0 * iA * fA + 5.0 * fA.square() + 4.0 * iJ * iV + 3.0 * fJ * iV + 3.0 * iJ * fV + 4.0 * fJ * fV).sum();
+            coeffsSnpObjective(3) = 240.0 * (45.0 * iA * iV - 39.0 * fA * iV + 39.0 * iA * fV - 45.0 * fA * fV + 7.0 * (iJ + fJ) * (iP - fP)).sum();
+            coeffsSnpObjective(4) = 2880.0 * (9.0 * iV.square() + 17.0 * iV * fV + 9.0 * fV.square() + 7.0 * (iA - fA) * (iP - fP)).sum();
+            coeffsSnpObjective(5) = 100800.0 * ((iV + fV) * (iP - fP)).sum();
+            coeffsSnpObjective(6) = 100800.0 * (iP - fP).square().sum();
 
             double t2 = duration * duration;
-            double t5 = t2 * t2 * duration;
+            double t6 = t2 * t2 * t2;
+            double t7 = t6 * duration;
 
-            return RootFinder::polyVal(coeffsJerObjective, duration) / t5;
+            return RootFinder::polyVal(coeffsSnpObjective, duration) / t7;
         }
 
     public:
-        inline void reset(const Eigen::Matrix3d &headState,
-                          const Eigen::Matrix3d &tailState,
+        inline void reset(const Eigen::Matrix<double, 3, 4> &headState,
+                          const Eigen::Matrix<double, 3, 4> &tailState,
                           const int &pieceNum)
         {
             N = pieceNum;
             Ps.resize(3, N + 1);
-            VAs.resize(3, 2 * N + 2);
+            VAJs.resize(3, 3 * N + 3);
             Ps.leftCols<1>() = headState.leftCols<1>();
             Ps.rightCols<1>() = tailState.leftCols<1>();
-            VAs.leftCols<2>() = headState.rightCols<2>();
-            VAs.rightCols<2>() = tailState.rightCols<2>();
+            VAJs.leftCols<3>() = headState.rightCols<3>();
+            VAJs.rightCols<3>() = tailState.rightCols<3>();
             T.resize(N);
-            A.create(2 * N - 2, 3, 3);
-            b.resize(2 * N - 2, 3);
+            A.create(3 * N - 3, 5, 5);
+            b.resize(3 * N - 3, 3);
 
             cv00.resize(N - 1);
             cv01.resize(N - 1);
@@ -841,6 +862,9 @@ namespace min_jerk
             cv20.resize(N - 1);
             cv21.resize(N - 1);
             cv22.resize(N - 1);
+            cv30.resize(N - 1);
+            cv31.resize(N - 1);
+            cv32.resize(N - 1);
             ca00.resize(N - 1);
             ca01.resize(N - 1);
             ca02.resize(N - 1);
@@ -850,6 +874,21 @@ namespace min_jerk
             ca20.resize(N - 1);
             ca21.resize(N - 1);
             ca22.resize(N - 1);
+            ca30.resize(N - 1);
+            ca31.resize(N - 1);
+            ca32.resize(N - 1);
+            cj00.resize(N - 1);
+            cj01.resize(N - 1);
+            cj02.resize(N - 1);
+            cj10.resize(N - 1);
+            cj11.resize(N - 1);
+            cj12.resize(N - 1);
+            cj20.resize(N - 1);
+            cj21.resize(N - 1);
+            cj22.resize(N - 1);
+            cj30.resize(N - 1);
+            cj31.resize(N - 1);
+            cj32.resize(N - 1);
 
             return;
         }
@@ -863,50 +902,74 @@ namespace min_jerk
             t3 = t2.cwiseProduct(t1);
             t4 = t2.cwiseProduct(t2);
             t5 = t4.cwiseProduct(t1);
+            t6 = t3.cwiseProduct(t3);
+            t7 = t6.cwiseProduct(t1);
 
             // Computed nonzero entries in A and b for linear system Ax=b to be solved
             for (int i = 0; i < N - 1; i++)
             {
-                cv00(i) = 720.0 / t4(i);
-                cv01(i) = 720.0 * (1.0 / t4(i + 1) - 1.0 / t4(i));
-                cv02(i) = -720.0 / t4(i + 1);
-                cv10(i) = 336.0 / t3(i);
-                cv11(i) = 384.0 * (1.0 / t3(i + 1) + 1.0 / t3(i));
-                cv12(i) = 336.0 / t3(i + 1);
-                cv20(i) = 48.0 / t2(i);
-                cv21(i) = 72.0 * (1.0 / t2(i + 1) - 1.0 / t2(i));
-                cv22(i) = -48.0 / t2(i + 1);
+                cv00(i) = 100800.0 / t6(i);
+                cv01(i) = 100800.0 * (1.0 / t6(i + 1) - 1.0 / t6(i));
+                cv02(i) = -100800.0 / t6(i + 1);
+                cv10(i) = 48960.0 / t5(i);
+                cv11(i) = 51840.0 * (1.0 / t5(i + 1) + 1.0 / t5(i));
+                cv12(i) = 48960.0 / t5(i + 1);
+                cv20(i) = 9360.0 / t4(i);
+                cv21(i) = 10800.0 * (1.0 / t4(i + 1) - 1.0 / t4(i));
+                cv22(i) = -9360.0 / t4(i + 1);
+                cv30(i) = 720.0 / t3(i);
+                cv31(i) = 960.0 * (1.0 / t3(i + 1) + 1.0 / t3(i));
+                cv32(i) = 720.0 / t3(i + 1);
 
-                ca00(i) = -120.0 / t3(i);
-                ca01(i) = 120.0 * (1.0 / t3(i + 1) + 1.0 / t3(i));
-                ca02(i) = -120.0 / t3(i + 1);
-                ca10(i) = -48.0 / t2(i);
-                ca11(i) = 72.0 * (1.0 / t2(i + 1) - 1.0 / t2(i));
-                ca12(i) = 48.0 / t2(i + 1);
-                ca20(i) = -6.0 / t1(i);
-                ca21(i) = 18.0 * (1.0 / t1(i + 1) + 1.0 / t1(i));
-                ca22(i) = -6.0 / t1(i + 1);
+                ca00(i) = -20160.0 / t5(i);
+                ca01(i) = 20160.0 * (1.0 / t5(i + 1) + 1.0 / t5(i));
+                ca02(i) = -20160.0 / t5(i + 1);
+                ca10(i) = -9360.0 / t4(i);
+                ca11(i) = 10800.0 * (1.0 / t4(i + 1) - 1.0 / t4(i));
+                ca12(i) = 9360.0 / t4(i + 1);
+                ca20(i) = -1680.0 / t3(i);
+                ca21(i) = 2400.0 * (1.0 / t3(i + 1) + 1.0 / t3(i));
+                ca22(i) = -1680.0 / t3(i + 1);
+                ca30(i) = -120.0 / t2(i);
+                ca31(i) = 240.0 * (1.0 / t2(i + 1) - 1.0 / t2(i));
+                ca32(i) = 120.0 / t2(i + 1);
+
+                cj00(i) = 1680.0 / t4(i);
+                cj01(i) = 1680.0 * (1.0 / t4(i + 1) - 1.0 / t4(i));
+                cj02(i) = -1680.0 / t4(i + 1);
+                cj10(i) = 720.0 / t3(i);
+                cj11(i) = 960.0 * (1.0 / t3(i + 1) + 1.0 / t3(i));
+                cj12(i) = 720.0 / t3(i + 1);
+                cj20(i) = 120.0 / t2(i);
+                cj21(i) = 240.0 * (1.0 / t2(i + 1) - 1.0 / t2(i));
+                cj22(i) = -120.0 / t2(i + 1);
+                cj30(i) = 8.0 / t1(i);
+                cj31(i) = 32.0 * (1.0 / t1(i + 1) + 1.0 / t1(i));
+                cj32(i) = 8.0 / t1(i + 1);
             }
 
             Ps.block(0, 1, 3, N - 1) = inPs;
 
             if (N == 2)
             {
-                Eigen::Matrix2d invA;
-                Eigen::Matrix<double, 2, 3> bl;
-                invA.setZero();
-                bl.setZero();
+                Eigen::Matrix3d A33, invA, bl;
 
-                // A = [cv11(0), cv21(0); ca11(0), ca21(0);]
-                invA(0, 0) = ca21(0);
-                invA(0, 1) = -cv21(0);
-                invA(1, 0) = -ca11(0);
-                invA(1, 1) = cv11(0);
-                invA /= invA(0, 0) * invA(1, 1) - invA(0, 1) * invA(1, 0);
-                bl.row(0) = (-cv00(0) * Ps.col(0) - cv01(0) * Ps.col(1) - cv02(0) * Ps.col(2) - cv10(0) * VAs.col(0) - cv20(0) * VAs.col(1) - cv12(0) * VAs.col(4) - cv22(0) * VAs.col(5)).transpose();
-                bl.row(1) = (-ca00(0) * Ps.col(0) - ca01(0) * Ps.col(1) - ca02(0) * Ps.col(2) - ca10(0) * VAs.col(0) - ca20(0) * VAs.col(1) - ca12(0) * VAs.col(4) - ca22(0) * VAs.col(5)).transpose();
+                A33(0, 0) = cv11(0);
+                A33(0, 1) = cv21(0);
+                A33(0, 2) = cv31(0);
+                A33(1, 0) = ca11(0);
+                A33(1, 1) = ca21(0);
+                A33(1, 2) = ca31(0);
+                A33(2, 0) = cj11(0);
+                A33(2, 1) = cj21(0);
+                A33(2, 2) = cj31(0);
 
-                VAs.block(0, 2, 3, 2) = (invA * bl).transpose();
+                invA = A33.inverse();
+                bl.row(0) = (-cv00(0) * Ps.col(0) - cv01(0) * Ps.col(1) - cv02(0) * Ps.col(2) - cv10(0) * VAJs.col(0) - cv20(0) * VAJs.col(1) - cv30(0) * VAJs.col(2) - cv12(0) * VAJs.col(6) - cv22(0) * VAJs.col(7) - cv32(0) * VAJs.col(8)).transpose();
+                bl.row(1) = (-ca00(0) * Ps.col(0) - ca01(0) * Ps.col(1) - ca02(0) * Ps.col(2) - ca10(0) * VAJs.col(0) - ca20(0) * VAJs.col(1) - ca30(0) * VAJs.col(2) - ca12(0) * VAJs.col(6) - ca22(0) * VAJs.col(7) - ca32(0) * VAJs.col(8)).transpose();
+                bl.row(2) = (-cj00(0) * Ps.col(0) - cj01(0) * Ps.col(1) - cj02(0) * Ps.col(2) - cj10(0) * VAJs.col(0) - cj20(0) * VAJs.col(1) - cj30(0) * VAJs.col(2) - cj12(0) * VAJs.col(6) - cj22(0) * VAJs.col(7) - cj32(0) * VAJs.col(8)).transpose();
+
+                VAJs.block(0, 3, 3, 3) = (invA * bl).transpose();
             }
             else
             {
@@ -915,43 +978,81 @@ namespace min_jerk
 
                 A(0, 0) = cv11(0);
                 A(0, 1) = cv21(0);
-                A(0, 2) = cv12(0);
-                A(0, 3) = cv22(0);
+                A(0, 2) = cv31(0);
+                A(0, 3) = cv12(0);
+                A(0, 4) = cv22(0);
+                A(0, 5) = cv32(0);
                 A(1, 0) = ca11(0);
                 A(1, 1) = ca21(0);
-                A(1, 2) = ca12(0);
-                A(1, 3) = ca22(0);
-                A(2 * N - 4, 2 * N - 6) = cv10(N - 2);
-                A(2 * N - 4, 2 * N - 5) = cv20(N - 2);
-                A(2 * N - 4, 2 * N - 4) = cv11(N - 2);
-                A(2 * N - 4, 2 * N - 3) = cv21(N - 2);
-                A(2 * N - 3, 2 * N - 6) = ca10(N - 2);
-                A(2 * N - 3, 2 * N - 5) = ca20(N - 2);
-                A(2 * N - 3, 2 * N - 4) = ca11(N - 2);
-                A(2 * N - 3, 2 * N - 3) = ca21(N - 2);
+                A(1, 2) = ca31(0);
+                A(1, 3) = ca12(0);
+                A(1, 4) = ca22(0);
+                A(1, 5) = ca32(0);
+                A(2, 0) = cj11(0);
+                A(2, 1) = cj21(0);
+                A(2, 2) = cj31(0);
+                A(2, 3) = cj12(0);
+                A(2, 4) = cj22(0);
+                A(2, 5) = cj32(0);
+                A(3 * N - 6, 3 * N - 9) = cv10(N - 2);
+                A(3 * N - 6, 3 * N - 8) = cv20(N - 2);
+                A(3 * N - 6, 3 * N - 7) = cv30(N - 2);
+                A(3 * N - 6, 3 * N - 6) = cv11(N - 2);
+                A(3 * N - 6, 3 * N - 5) = cv21(N - 2);
+                A(3 * N - 6, 3 * N - 4) = cv31(N - 2);
+                A(3 * N - 5, 3 * N - 9) = ca10(N - 2);
+                A(3 * N - 5, 3 * N - 8) = ca20(N - 2);
+                A(3 * N - 5, 3 * N - 7) = ca30(N - 2);
+                A(3 * N - 5, 3 * N - 6) = ca11(N - 2);
+                A(3 * N - 5, 3 * N - 5) = ca21(N - 2);
+                A(3 * N - 5, 3 * N - 4) = ca31(N - 2);
+                A(3 * N - 4, 3 * N - 9) = cj10(N - 2);
+                A(3 * N - 4, 3 * N - 8) = cj20(N - 2);
+                A(3 * N - 4, 3 * N - 7) = cj30(N - 2);
+                A(3 * N - 4, 3 * N - 6) = cj11(N - 2);
+                A(3 * N - 4, 3 * N - 5) = cj21(N - 2);
+                A(3 * N - 4, 3 * N - 4) = cj31(N - 2);
 
-                b.row(0) = (-cv00(0) * Ps.col(0) - cv01(0) * Ps.col(1) - cv02(0) * Ps.col(2) - cv10(0) * VAs.col(0) - cv20(0) * VAs.col(1)).transpose();
-                b.row(1) = (-ca00(0) * Ps.col(0) - ca01(0) * Ps.col(1) - ca02(0) * Ps.col(2) - ca10(0) * VAs.col(0) - ca20(0) * VAs.col(1)).transpose();
-                b.row(2 * N - 4) = (-cv00(N - 2) * Ps.col(N - 2) - cv01(N - 2) * Ps.col(N - 1) - cv02(N - 2) * Ps.col(N) - cv12(N - 2) * VAs.col(2 * N) - cv22(N - 2) * VAs.col(2 * N + 1)).transpose();
-                b.row(2 * N - 3) = (-ca00(N - 2) * Ps.col(N - 2) - ca01(N - 2) * Ps.col(N - 1) - ca02(N - 2) * Ps.col(N) - ca12(N - 2) * VAs.col(2 * N) - ca22(N - 2) * VAs.col(2 * N + 1)).transpose();
+                b.row(0) = (-cv00(0) * Ps.col(0) - cv01(0) * Ps.col(1) - cv02(0) * Ps.col(2) - cv10(0) * VAJs.col(0) - cv20(0) * VAJs.col(1) - cv30(0) * VAJs.col(2)).transpose();
+                b.row(1) = (-ca00(0) * Ps.col(0) - ca01(0) * Ps.col(1) - ca02(0) * Ps.col(2) - ca10(0) * VAJs.col(0) - ca20(0) * VAJs.col(1) - ca30(0) * VAJs.col(2)).transpose();
+                b.row(2) = (-cj00(0) * Ps.col(0) - cj01(0) * Ps.col(1) - cj02(0) * Ps.col(2) - cj10(0) * VAJs.col(0) - cj20(0) * VAJs.col(1) - cj30(0) * VAJs.col(2)).transpose();
+                b.row(3 * N - 6) = (-cv00(N - 2) * Ps.col(N - 2) - cv01(N - 2) * Ps.col(N - 1) - cv02(N - 2) * Ps.col(N) - cv12(N - 2) * VAJs.col(3 * N) - cv22(N - 2) * VAJs.col(3 * N + 1) - cv32(N - 2) * VAJs.col(3 * N + 2)).transpose();
+                b.row(3 * N - 5) = (-ca00(N - 2) * Ps.col(N - 2) - ca01(N - 2) * Ps.col(N - 1) - ca02(N - 2) * Ps.col(N) - ca12(N - 2) * VAJs.col(3 * N) - ca22(N - 2) * VAJs.col(3 * N + 1) - ca32(N - 2) * VAJs.col(3 * N + 2)).transpose();
+                b.row(3 * N - 4) = (-cj00(N - 2) * Ps.col(N - 2) - cj01(N - 2) * Ps.col(N - 1) - cj02(N - 2) * Ps.col(N) - cj12(N - 2) * VAJs.col(3 * N) - cj22(N - 2) * VAJs.col(3 * N + 1) - cj32(N - 2) * VAJs.col(3 * N + 2)).transpose();
 
                 for (int i = 1; i < N - 2; i++)
                 {
-                    A(i * 2, i * 2 - 2) = cv10(i);
-                    A(i * 2, i * 2 - 1) = cv20(i);
-                    A(i * 2, i * 2) = cv11(i);
-                    A(i * 2, i * 2 + 1) = cv21(i);
-                    A(i * 2, i * 2 + 2) = cv12(i);
-                    A(i * 2, i * 2 + 3) = cv22(i);
-                    A(i * 2 + 1, i * 2 - 2) = ca10(i);
-                    A(i * 2 + 1, i * 2 - 1) = ca20(i);
-                    A(i * 2 + 1, i * 2) = ca11(i);
-                    A(i * 2 + 1, i * 2 + 1) = ca21(i);
-                    A(i * 2 + 1, i * 2 + 2) = ca12(i);
-                    A(i * 2 + 1, i * 2 + 3) = ca22(i);
+                    A(i * 3, i * 3 - 3) = cv10(i);
+                    A(i * 3, i * 3 - 2) = cv20(i);
+                    A(i * 3, i * 3 - 1) = cv30(i);
+                    A(i * 3, i * 3) = cv11(i);
+                    A(i * 3, i * 3 + 1) = cv21(i);
+                    A(i * 3, i * 3 + 2) = cv31(i);
+                    A(i * 3, i * 3 + 3) = cv12(i);
+                    A(i * 3, i * 3 + 4) = cv22(i);
+                    A(i * 3, i * 3 + 5) = cv32(i);
+                    A(i * 3 + 1, i * 3 - 3) = ca10(i);
+                    A(i * 3 + 1, i * 3 - 2) = ca20(i);
+                    A(i * 3 + 1, i * 3 - 1) = ca30(i);
+                    A(i * 3 + 1, i * 3) = ca11(i);
+                    A(i * 3 + 1, i * 3 + 1) = ca21(i);
+                    A(i * 3 + 1, i * 3 + 2) = ca31(i);
+                    A(i * 3 + 1, i * 3 + 3) = ca12(i);
+                    A(i * 3 + 1, i * 3 + 4) = ca22(i);
+                    A(i * 3 + 1, i * 3 + 5) = ca32(i);
+                    A(i * 3 + 2, i * 3 - 3) = cj10(i);
+                    A(i * 3 + 2, i * 3 - 2) = cj20(i);
+                    A(i * 3 + 2, i * 3 - 1) = cj30(i);
+                    A(i * 3 + 2, i * 3) = cj11(i);
+                    A(i * 3 + 2, i * 3 + 1) = cj21(i);
+                    A(i * 3 + 2, i * 3 + 2) = cj31(i);
+                    A(i * 3 + 2, i * 3 + 3) = cj12(i);
+                    A(i * 3 + 2, i * 3 + 4) = cj22(i);
+                    A(i * 3 + 2, i * 3 + 5) = cj32(i);
 
-                    b.row(i * 2) = (-cv00(i) * Ps.col(i) - cv01(i) * Ps.col(i + 1) - cv02(i) * Ps.col(i + 2)).transpose();
-                    b.row(i * 2 + 1) = (-ca00(i) * Ps.col(i) - ca01(i) * Ps.col(i + 1) - ca02(i) * Ps.col(i + 2)).transpose();
+                    b.row(i * 3) = (-cv00(i) * Ps.col(i) - cv01(i) * Ps.col(i + 1) - cv02(i) * Ps.col(i + 2)).transpose();
+                    b.row(i * 3 + 1) = (-ca00(i) * Ps.col(i) - ca01(i) * Ps.col(i + 1) - ca02(i) * Ps.col(i + 2)).transpose();
+                    b.row(i * 3 + 2) = (-cj00(i) * Ps.col(i) - cj01(i) * Ps.col(i + 1) - cj02(i) * Ps.col(i + 2)).transpose();
                 }
 
                 // Solve Ax=b using banded LU factorization
@@ -959,7 +1060,7 @@ namespace min_jerk
                 // The solution is computed in place.
                 A.solve(b);
 
-                VAs.block(0, 2, 3, 2 * N - 2) = b.transpose();
+                VAJs.block(0, 3, 3, 3 * N - 3) = b.transpose();
             }
 
             return;
@@ -971,8 +1072,8 @@ namespace min_jerk
 
             for (int i = 0; i < N; i++)
             {
-                objective += evalPieceObjective(Ps.col(i), VAs.col(2 * i), VAs.col(2 * i + 1),
-                                                Ps.col(i + 1), VAs.col(2 * i + 2), VAs.col(2 * i + 3),
+                objective += evalPieceObjective(Ps.col(i), VAJs.col(3 * i), VAJs.col(3 * i + 1), VAJs.col(3 * i + 2),
+                                                Ps.col(i + 1), VAJs.col(3 * i + 3), VAJs.col(3 * i + 4), VAJs.col(3 * i + 5),
                                                 T(i));
             }
 
@@ -983,33 +1084,37 @@ namespace min_jerk
         {
             Eigen::VectorXd grad(N);
 
-            double tempT, tempT6;
-            Eigen::Array3d iP, iV, iA, fP, fV, fA;
-            Eigen::VectorXd coeffsGradT(5);
+            double tempT, tempT8;
+            Eigen::Array3d iP, iV, iA, iJ, fP, fV, fA, fJ;
+            Eigen::VectorXd coeffsGradT(7);
             for (int i = 0; i < N; i++)
             {
                 // Get the information of the piece
                 tempT = T(i);
-                tempT6 = tempT * tempT;
-                tempT6 = tempT6 * tempT6 * tempT6;
+                tempT8 = tempT * tempT;
+                tempT8 = tempT8 * tempT8;
+                tempT8 = tempT8 * tempT8;
 
                 // Calculate the numerator of dJi(T)/dT without time regularization
                 iP = Ps.col(i);
-                iV = VAs.col(2 * i);
-                iA = VAs.col(2 * i + 1);
+                iV = VAJs.col(3 * i);
+                iA = VAJs.col(3 * i + 1);
+                iJ = VAJs.col(3 * i + 2);
                 fP = Ps.col(i + 1);
-                fV = VAs.col(2 * i + 2);
-                fA = VAs.col(2 * i + 3);
+                fV = VAJs.col(3 * i + 3);
+                fA = VAJs.col(3 * i + 4);
+                fJ = VAJs.col(3 * i + 5);
 
-                coeffsGradT(0) = (-9.0 * iA.square() + 6.0 * iA * fA - 9.0 * fA.square()).sum();
-                coeffsGradT(1) = -48.0 * ((3.0 * iA - 2.0 * fA) * iV + (2.0 * iA - 3.0 * fA) * fV).sum();
-                coeffsGradT(2) = -72.0 * ((8.0 * iV.square() + 14.0 * iV * fV + 8.0 * fV.square()).sum() +
-                                          (5.0 * (iA - fA) * (iP - fP)).sum());
-                coeffsGradT(3) = -2880.0 * ((iV + fV) * (iP - fP)).sum();
-                coeffsGradT(4) = -3600.0 * (iP - fP).square().sum();
+                coeffsGradT(0) = -8.0 * (2.0 * iJ.square() + iJ * fJ + 2.0 * fJ.square()).sum();
+                coeffsGradT(1) = -240.0 * (iA * (2.0 * iJ + fJ) - fA * (iJ + 2.0 * fJ)).sum();
+                coeffsGradT(2) = -720.0 * (5.0 * iA.square() - 7.0 * iA * fA + 5.0 * fA.square() + 4.0 * iJ * iV + 3.0 * fJ * iV + 3.0 * iJ * fV + 4.0 * fJ * fV).sum();
+                coeffsGradT(3) = -960.0 * (45.0 * iA * iV - 39.0 * fA * iV + 39.0 * iA * fV - 45.0 * fA * fV + 7.0 * (iJ + fJ) * (iP - fP)).sum();
+                coeffsGradT(4) = -14400.0 * (9.0 * iV.square() + 17.0 * iV * fV + 9.0 * fV.square() + 7.0 * (iA - fA) * (iP - fP)).sum();
+                coeffsGradT(5) = 604800.0 * ((iV + fV) * (iP - fP)).sum();
+                coeffsGradT(6) = -705600.0 * (iP - fP).square().sum();
 
                 // Calculate the gradient
-                grad(i) = RootFinder::polyVal(coeffsGradT, tempT) / tempT6;
+                grad(i) = RootFinder::polyVal(coeffsGradT, tempT) / tempT8;
             }
 
             return grad;
@@ -1021,9 +1126,10 @@ namespace min_jerk
 
             for (int i = 1; i < N; i++)
             {
-                grad.col(i - 1) = 120.0 * (-VAs.col(2 * i - 1) / t3(i - 1) + VAs.col(2 * i + 1) * (1.0 / t3(i - 1) + 1.0 / t3(i)) - VAs.col(2 * i + 3) / t3(i)) +
-                                  720.0 * (-VAs.col(2 * i - 2) / t4(i - 1) - VAs.col(2 * i) * (1.0 / t4(i - 1) - 1.0 / t4(i)) + VAs.col(2 * i + 2) / t4(i)) +
-                                  1440.0 * (-Ps.col(i - 1) / t5(i - 1) + Ps.col(i) * (1.0 / t5(i - 1) + 1.0 / t5(i)) - Ps.col(i + 1) / t5(i));
+                grad.col(i - 1) = 1680.0 * (-VAJs.col(3 * i - 1) / t4(i - 1) - VAJs.col(3 * i + 2) * (1.0 / t4(i - 1) - 1.0 / t4(i)) + VAJs.col(3 * i + 5) / t4(i)) +
+                                  20160.0 * (-VAJs.col(3 * i - 2) / t5(i - 1) + VAJs.col(3 * i + 1) * (1.0 / t5(i - 1) + 1.0 / t5(i)) - VAJs.col(3 * i + 4) / t5(i)) +
+                                  100800.0 * (-VAJs.col(3 * i - 3) / t6(i - 1) - VAJs.col(3 * i) * (1.0 / t6(i - 1) - 1.0 / t6(i)) + VAJs.col(3 * i + 3) / t6(i)) +
+                                  201600.0 * (-Ps.col(i - 1) / t7(i - 1) + Ps.col(i) * (1.0 / t7(i - 1) + 1.0 / t7(i)) - Ps.col(i + 1) / t7(i));
             }
 
             return grad;
@@ -1037,11 +1143,13 @@ namespace min_jerk
             for (int i = 0; i < N; i++)
             {
                 boundCond.col(0) = Ps.col(i);
-                boundCond.col(1) = VAs.col(2 * i);
-                boundCond.col(2) = VAs.col(2 * i + 1);
-                boundCond.col(3) = Ps.col(i + 1);
-                boundCond.col(4) = VAs.col(2 * i + 2);
-                boundCond.col(5) = VAs.col(2 * i + 3);
+                boundCond.col(1) = VAJs.col(3 * i);
+                boundCond.col(2) = VAJs.col(3 * i + 1);
+                boundCond.col(3) = VAJs.col(3 * i + 2);
+                boundCond.col(4) = Ps.col(i + 1);
+                boundCond.col(5) = VAJs.col(3 * i + 3);
+                boundCond.col(6) = VAJs.col(3 * i + 4);
+                boundCond.col(7) = VAJs.col(3 * i + 5);
 
                 traj.emplace_back(boundCond, T(i));
             }
@@ -1049,6 +1157,6 @@ namespace min_jerk
         }
     };
 
-} // namespace min_jerk
+} // namespace min_snap
 
 #endif
