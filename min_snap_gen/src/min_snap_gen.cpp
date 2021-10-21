@@ -1,7 +1,8 @@
 #include "min_snap.hpp"
-#include "random_route_gen.hpp"
-#include "vis_utils.hpp"
 #include "min_snap_manager.hpp"
+#include "random_route_gen.hpp"
+#include "peacock_route_gen.hpp"
+#include "vis_utils.hpp"
 
 #include <chrono>
 
@@ -23,19 +24,26 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::NodeHandle pnh("~");
 
-    MinSnapManager minSnapMan(nh);
-    VisUtils vis_utils(&nh);
+    minSnapManager minSnapMan(nh);
+    visUtils visUtil(&nh);
 
     // Number of random waypoints to generate
     int n_wp = 5;
     // Lenght of the cube in which to generate wps
     int l_side = 10;
+    int fov_h = 90;
+    int fov_v = 60;
+    int rho_res = 2; 
 
     pnh.getParam("n_wp", n_wp);
     pnh.getParam("l_side", l_side);
+    pnh.getParam("fov_h", fov_h);
+    pnh.getParam("fov_v", fov_v);
+    pnh.getParam("rho_res", rho_res);
 
     // WP generation only inside a cube of dimension l_side
-    RandomRouteGenerator routeGen(Array3d(-l_side, -l_side, -l_side), Array3d(l_side, l_side, l_side));
+    randomRouteGenerator routeGen(Array3d(-l_side, -l_side, -l_side), Array3d(l_side, l_side, l_side));
+    peacockRouteGenerator peacockRouteGen;
 
     min_snap::SnapOpt snapOpt;
     min_snap::Trajectory minSnapTraj;
@@ -59,9 +67,11 @@ int main(int argc, char **argv)
         // Timer initialization
         d0 = 0.0;
         // Random waypoints generation
-        route = routeGen.generate(n_wp);
-        cout << "wp: " << endl;
+        // route = routeGen.generate(n_wp);
+        route = peacockRouteGen.generate(fov_h, fov_v, rho_res);
+        cout << "Total wp: " << route.cols() - 1 << endl;
         cout << route << endl;
+
         // initialState and finalState definition
         iS.col(0) << route.leftCols<1>();
         fS.col(0) << route.rightCols<1>();
@@ -74,16 +84,18 @@ int main(int argc, char **argv)
 
         tc1 = std::chrono::high_resolution_clock::now();
         snapOpt.reset(iSS, fSS, route.cols() - 1);
-        snapOpt.generate(route.block(0, 1, 3, n_wp - 1), ts);
+
+        snapOpt.generate(route.block(0, 1, 3, route.cols() - 2), ts);
+
         snapOpt.getTraj(minSnapTraj);
         tc2 = std::chrono::high_resolution_clock::now();
 
         d0 += std::chrono::duration_cast<std::chrono::duration<double>>(tc2 - tc1).count();
         ROS_WARN("Built in %f ms", d0 * 1e3);
 
-        vis_utils.vis_waypoints(route);
-        vis_utils.vis_raw_traj(minSnapTraj.getPositions());
-        vis_utils.vis_traj(minSnapTraj, ts);
+        visUtil.visWaypoints(route);
+        visUtil.visRawTraj(minSnapTraj.getPositions());
+        visUtil.visSnapTraj(minSnapTraj, ts);
 
         ros::spinOnce();
         r.sleep();

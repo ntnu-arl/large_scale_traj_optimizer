@@ -16,10 +16,10 @@ using namespace Eigen;
 using namespace std;
 string sep = "\n------------------------------------------------\n";
 
-class VisUtils
+class visUtils
 {
 public:
-    VisUtils(ros::NodeHandle *nh)
+    visUtils(ros::NodeHandle *nh)
     {
         pub_wp_v = nh->advertise<visualization_msgs::MarkerArray>("wp_v", 10);
         pub_wp_id_v = nh->advertise<visualization_msgs::MarkerArray>("wp_id_v", 10);
@@ -27,7 +27,7 @@ public:
         pub_min_snap_traj = nh->advertise<visualization_msgs::Marker>("min_snap_traj", 10);
     }
 
-    void vis_waypoints(const MatrixXd &coords)
+    void visWaypoints(const MatrixXd &coords)
     {
 
         visualization_msgs::Marker wp;
@@ -45,9 +45,9 @@ public:
         wp.pose.orientation.y = 0.0;
         wp.pose.orientation.z = 0.0;
         wp.pose.orientation.w = 1.0;
-        wp.scale.x = 0.65;
-        wp.scale.y = 0.65;
-        wp.scale.z = 0.65;
+        wp.scale.x = 0.3;
+        wp.scale.y = 0.3;
+        wp.scale.z = 0.3;
         wp.color.r = 1.0;
         wp.color.g = 1.0;
         wp.color.b = 1.0;
@@ -117,7 +117,7 @@ public:
         wp_id_v.markers.clear();
     }
 
-    void vis_raw_traj(const MatrixXd &coords)
+    void visRawTraj(const MatrixXd &coords)
     {
         // cout << coords << endl;
         visualization_msgs::Marker segment;
@@ -163,7 +163,7 @@ public:
         segment_v.markers.clear();
     }
 
-    void vis_traj(min_snap::Trajectory &traj, const VectorXd ts)
+    void visSnapTraj(min_snap::Trajectory &traj, const VectorXd ts)
     {
         visualization_msgs::Marker min_snap_traj;
 
@@ -201,7 +201,7 @@ public:
             // cout << sep;
             // cout << traj[i].getCoeffMat() << endl;
             // cout << sep;
-            for (double t = 0.0; t < ts(i); t += 0.1, count += 1)
+            for (double t = 0.0; t < ts(i); t += 0.1, count += 1)  // sample a bit
             {
                 pos = traj[i].getPos(t);
                 cur(0) = pt.x = pos(0);

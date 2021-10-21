@@ -11,10 +11,10 @@
 
 using namespace Eigen;
 
-class RandomRouteGenerator
+class randomRouteGenerator
 {
 public:
-    RandomRouteGenerator(Array3d l, Array3d u)
+    randomRouteGenerator(Array3d l, Array3d u)
         : lBound(l), uBound(u), uniformReal(0.0, 1.0) {}
 
     inline MatrixXd generate(int N)

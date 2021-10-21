@@ -7,12 +7,14 @@
 #include <random>
 #include <Eigen/Eigen>
 
+#include <ros/ros.h>
+
 using namespace Eigen;
 
-class MinSnapManager
+class minSnapManager
 {
 public:
-    MinSnapManager(ros::NodeHandle &n){};
+    minSnapManager(ros::NodeHandle &n){};
 
     VectorXd allocateTime(const MatrixXd &wayPs, double vel, double acc)
     {
