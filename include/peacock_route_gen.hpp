@@ -23,7 +23,7 @@ public:
         return deg * M_PI / 180;
     }
 
-    inline MatrixXd generate(int fov_h, int fov_v, int rho_res)
+    inline MatrixXd generate(int fov_h, int fov_v, int rho_res, int rho_min, int rho_max)
     {
         // MatrixXd route(3, N + 1);
         MatrixXd route;
@@ -37,14 +37,15 @@ public:
         {
             for (double phi = v_pitch[0]; phi <= v_pitch[1]; phi += ang_res)
             {
-                for (int r = 3; r <= 10; r += rho_res)
+                coords.push_back(Array3d(0, 0, 0));
+                for (int r = rho_min; r <= rho_max; r += rho_res)
                 {
                     temp << r * cos(theta),
                         r * sin(theta),
                         r * sin(phi);
+
                     coords.push_back(temp);
                 }
-                coords.push_back(Array3d(0, 0, 0));
             }
         }
 
@@ -55,7 +56,19 @@ public:
             route.col(i + 1) << coords[i];
 
         coords.clear();
+        removeColumn(route, 0);
+
         return route;
+    }
+    void removeColumn(Eigen::MatrixXd &matrix, unsigned int colToRemove)
+    {
+        unsigned int numRows = matrix.rows();
+        unsigned int numCols = matrix.cols() - 1;
+
+        if (colToRemove < numCols)
+            matrix.block(0, colToRemove, numRows, numCols - colToRemove) = matrix.rightCols(numCols - colToRemove);
+
+        matrix.conservativeResize(numRows, numCols);
     }
 
 private:

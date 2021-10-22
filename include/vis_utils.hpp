@@ -140,7 +140,7 @@ public:
         segment.color.g = 1.0;
         segment.color.b = 0.5;
 
-        // cout << "MinSnapTraj Waypoints: " << endl;
+        // cout << "visRawTraj Waypoints: " << endl;
         // IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
         // cout << coords.format(CleanFmt) << sep;
 
@@ -172,7 +172,7 @@ public:
 
         min_snap_traj.id = 0;
         min_snap_traj.type = visualization_msgs::Marker::SPHERE_LIST;
-        min_snap_traj.action = visualization_msgs::Marker::ADD;
+        min_snap_traj.action = 0;
         min_snap_traj.scale.x = 0.2;
         min_snap_traj.scale.y = 0.2;
         min_snap_traj.scale.z = 0.2;
@@ -201,7 +201,7 @@ public:
             // cout << sep;
             // cout << traj[i].getCoeffMat() << endl;
             // cout << sep;
-            for (double t = 0.0; t < ts(i); t += 0.1, count += 1)  // sample a bit
+            for (double t = 0.0; t < ts(i); t += 0.1, count += 1) // sample a bit
             {
                 pos = traj[i].getPos(t);
                 cur(0) = pt.x = pos(0);

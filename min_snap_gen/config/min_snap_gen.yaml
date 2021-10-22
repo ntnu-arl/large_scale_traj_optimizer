@@ -1,7 +1,9 @@
 n_wp: 4
 l_side: 10
 rho_res: 5
-rho_min: 1
-rho_max: 10
-fov_h: 20
-fov_v: 10
+rho_min: 5
+rho_max: 20
+fov_h: 60
+fov_v: 30
+max_vel: 3.0
+max_acc: 3.0
