@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+    <arg name="rviz_en" default="true" />
+
+    <node pkg="min_snap_gen" type="min_snap_gen_node" name="min_snap_gen" clear_params="true" output="screen">
+        <rosparam command="load" file="$(find min_snap_gen)/config/min_snap_gen.yaml" />
+    </node>
+
+    <group if="$(arg rviz_en)">
+        <node pkg="rviz" type="rviz" name="rviz" args="-d $(find min_snap_gen)/rviz/min_snap_gen.rviz" output="screen" />
+    </group>
+
+</launch>
