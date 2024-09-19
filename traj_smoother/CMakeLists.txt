@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 
-project(min_snap_gen)
+project(traj_smoother)
 
 set(CMAKE_CXX_FLAGS "-std=c++11")
 set(CMAKE_BUILD_TYPE "Release")
@@ -26,7 +26,7 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
-add_executable(${PROJECT_NAME}_node src/min_snap_gen.cpp)
+add_executable(${PROJECT_NAME}_node src/traj_smoother.cpp)
 
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
