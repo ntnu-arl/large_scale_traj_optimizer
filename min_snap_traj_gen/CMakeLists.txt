@@ -28,7 +28,11 @@ include_directories(
 )
 
 add_executable(rectangle_node src/rectangle_node.cpp)
-
 target_link_libraries(rectangle_node
+  ${catkin_LIBRARIES}
+)
+
+add_executable(rounded_rectangle_node src/rounded_rectangle_node.cpp)
+target_link_libraries(rounded_rectangle_node
   ${catkin_LIBRARIES}
 )

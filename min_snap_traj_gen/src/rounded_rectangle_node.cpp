@@ -39,38 +39,32 @@ int main(int argc, char** argv)
 
   min_jerk::JerkOpt jerkOpt;
   min_jerk::Trajectory minJerkTraj;
-
-  min_snap::SnapOpt snapOpt;
-  min_snap::Trajectory minSnapTraj;
-
-  // Eigen::MatrixXd route;
-  Eigen::VectorXd ts;
-  Eigen::Matrix3d iS, fS;
-  Eigen::Matrix<double, 3, 4> iSS, fSS;
-  iS.setZero();
-  fS.setZero();
-  Eigen::Vector3d zeroVec(0.0, 0.0, 0.0);
   ros::Rate lp(10);
-  int groupSize = 100;
 
-  std::chrono::high_resolution_clock::time_point tc0, tc1, tc2;
-  double d0, d1;
-
-  Eigen::Matrix<double, 3, 5> route;
-  route.col(0).setZero();
-  route.col(1) << 5, 0, 0;
-  route.col(2) << 5, 5, 0;
-  route.col(3) << 0, 5, 0;
-  route.col(4).setZero();
-  const int num_pieces = 4;
+  // create trajectory
+  // parameters
+  const double radius = 1;
+  const double length = 10;
+  // set start and end position
+  Eigen::Matrix3d iS, fS;
+  iS.col(0) << radius, -length / 2, 0;
+  fS.col(0) = iS.col(0);
+  // waypoints
+  const int num_pieces = 6;
+  Eigen::Matrix<double, 3, num_pieces-1> route;
+  route.col(0) << radius, length/2, 0;
+  route.col(1) << 0, radius + length/2, 0;
+  route.col(2) << -radius, length/2, 0;
+  route.col(3) << -radius, -length/2, 0;
+  route.col(4) << 0, -(radius + length/2), 0;
   Eigen::VectorXd times(num_pieces);
-  times << 2, 2, 2, 2;
+  times << 4, 2, 2, 4, 2, 2;
 
   std::cout << "route:\n" << route << '\n';
   std::cout << "times:\n" << times.transpose() << '\n';
 
   jerkOpt.reset(iS, fS, num_pieces);
-  jerkOpt.generate(route.block(0, 1, 3, num_pieces - 1), times);
+  jerkOpt.generate(route, times);
   jerkOpt.getTraj(minJerkTraj);
 
   std::cout << "Optim finished with:"
