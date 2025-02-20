@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+    <node pkg="min_snap_gen" type="rectangle_node" name="rectangle_node" output="screen">
+    </node>
+</launch>
