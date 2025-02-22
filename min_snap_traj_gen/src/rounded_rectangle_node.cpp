@@ -103,47 +103,44 @@ void writeFile(const Trajectory& traj, const std::string& file_name = "trajector
 }
 
 // TODO: add times
-void addStraight(Eigen::Vector3d& start, const Eigen::Vector3d& delta, const double velocity,
+void addStraight(Eigen::Vector3d& start, const Eigen::Vector3d& delta, const double spacing,
                  std::vector<Eigen::Vector3d>& wps)
 {
   const double total_distance = delta.norm();
-  const double dt = total_distance / velocity;
-  const size_t N = (size_t)std::round(total_distance / velocity);
+  const size_t N = (size_t)std::round(total_distance / spacing);
 
   Eigen::Vector3d current = start;
   for (size_t i = 0; i < N; ++i)
   {
     current += delta / N;
     wps.push_back(current);
-    // times.push_back(dt);
   }
 
   start += delta;
 }
 
 // TODO:: add times
-void addSemiCircle(Eigen::Vector3d& start, const Eigen::Vector3d& delta, const double omega,
+void addSemiCircle(Eigen::Vector3d& start, const Eigen::Vector3d& delta, const double angle_spacing,
                    std::vector<Eigen::Vector3d>& wps)
 {
-  const size_t N = (size_t)std::round(M_PI / omega);
+  const size_t N = (size_t)std::round(M_PI / angle_spacing);
 
   const Eigen::Vector3d finish = start + delta;
   const Eigen::Vector3d center = (finish + start) / 2;
   const double radius = delta.norm() / 2;
   const double phase = std::atan2(start(1) - center(1), start(0) - center(0));
 
-  for (size_t i = 1; i <= N; ++i)
+  for (size_t i = 0; i < N; ++i)
   {
-    const double angle = omega * i + phase;
+    const double angle = angle_spacing * (i + 1) + phase;
     const double x = radius * std::cos(angle) + center(0);
     const double y = radius * std::sin(angle) + center(1);
     const double z = center(2);
-    // std::cout << "x: " << x << " y: " << y << '\n';
+
     wps.emplace_back(x, y, z);
-    // times.push_back(1);  // REVIEW: not sure why dt is 1
   }
 
-  start += delta;
+  start = finish;
 }
 
 int main(int argc, char** argv)
@@ -171,19 +168,30 @@ int main(int argc, char** argv)
   fS.col(0) = iS.col(0);
   waypoint_vector.push_back(start);
   // filling remainder of trajectory
-  const double velocity = 1.0;
-  const double omega = 45.0 * M_PI / 180.0;
+  const double max_speed = 4.0;
+  const double max_accel = 4.0;
+  const double initial_speed = 0.0;
+  const double straight_spacing = max_speed;
+  const size_t N_circle = 2;  // not counting the endpoint
+  const double angle_spacing = M_PI / (N_circle + 1);
   Eigen::Vector3d next = start;
-  addStraight(next, { 0, length, 0 }, velocity, waypoint_vector);
-  addSemiCircle(next, { -2 * radius, 0, 0 }, omega, waypoint_vector);
-  addStraight(next, { 0, -length, 0 }, velocity, waypoint_vector);
-  addSemiCircle(next, { 2 * radius, 0, 0 }, omega, waypoint_vector);
+
+  const int N_loops = 3;
+  for (int i = 0; i < N_loops; ++i)
+  {
+    addStraight(next, { 0, length, 0 }, straight_spacing, waypoint_vector);
+    addSemiCircle(next, { -2 * radius, 0, 0 }, angle_spacing, waypoint_vector);
+    addStraight(next, { 0, -length, 0 }, straight_spacing, waypoint_vector);
+    addSemiCircle(next, { 2 * radius, 0, 0 }, angle_spacing, waypoint_vector);
+  }
 
   for (const auto& wp : waypoint_vector)
   {
-    time_vector.push_back(0.75);
+    time_vector.push_back(1.0);
   }
-
+  // ROS_INFO("waypoint size before time allocation: %lu", waypoint_vector.size());
+  // computeTimeAllocation(waypoint_vector, max_speed, max_accel, initial_speed, time_vector);
+  ROS_INFO("Size after allocation waypoints (%lu) and times (%lu)", waypoint_vector.size(), time_vector.size());
   // const int num_pieces = 6;
   // Eigen::Matrix<double, 3, num_pieces - 1> route;
   // route.col(0) << radius, length / 2, 0;
@@ -194,23 +202,20 @@ int main(int argc, char** argv)
   // Eigen::VectorXd times(num_pieces);
   // times << 4, 2, 2, 4, 2, 2;
 
-  std::cout << "wp size: " << waypoint_vector.size() << " times size: " << time_vector.size() << '\n';
-
   const int num_pieces = time_vector.size();
   Eigen::VectorXd times(num_pieces);
   Eigen::MatrixXd route(3, num_pieces - 1);
-  std::cout << "waypoints\n";
-  for (const auto& wp : waypoint_vector)
-  {
-    std::cout << wp.transpose() << '\n';
-  }
-  std::cout << '\n';
-  for (const auto& t : time_vector)
-  {
-    std::cout << t << '\t';
-  }
-  std::cout << '\n';
-
+  // std::cout << "waypoints\n";
+  // for (const auto& wp : waypoint_vector)
+  // {
+  //   std::cout << wp.transpose() << '\n';
+  // }
+  // std::cout << '\n';
+  // for (const auto& t : time_vector)
+  // {
+  //   std::cout << t << '\t';
+  // }
+  // std::cout << '\n';
   for (int i = 0; i < num_pieces; ++i)
   {
     times(i) = time_vector[i];
@@ -221,8 +226,8 @@ int main(int argc, char** argv)
     }
   }
 
-  std::cout << "route:\n" << route << '\n';
-  std::cout << "times:\n" << times.transpose() << '\n';
+  // std::cout << "route:\n" << route << '\n';
+  // std::cout << "times:\n" << times.transpose() << '\n';
 
   jerkOpt.reset(iS, fS, num_pieces);
   jerkOpt.generate(route, times);
@@ -230,8 +235,8 @@ int main(int argc, char** argv)
 
   std::cout << "Optim finished with:"
             << "\n\tduration: " << minJerkTraj.getTotalDuration() << "\n\tmax_vel: " << minJerkTraj.getMaxVelRate()
-            << "\n\tmax_acc: " << minJerkTraj.getMaxAccRate() << "\n\tpositions:\n"
-            << minJerkTraj.getPositions() << '\n';
+            << "\n\tmax_acc: " << minJerkTraj.getMaxAccRate() << '\n';
+  // std::cout << "\tpositions:\n" << minJerkTraj.getPositions() << '\n';
 
   const double duration = minJerkTraj.getTotalDuration();
   const double dt = 0.01;
