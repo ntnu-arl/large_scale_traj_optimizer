@@ -98,7 +98,7 @@ void writeFile(const Trajectory& traj, const std::string& file_name = "trajector
               acc(0), acc(1), acc(2));
     }
   }
-
+  fclose(file);
   ROS_INFO("Done writing");
 }
 
