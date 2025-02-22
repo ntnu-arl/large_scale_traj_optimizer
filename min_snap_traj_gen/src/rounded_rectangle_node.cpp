@@ -160,34 +160,43 @@ int main(int argc, char** argv)
   std::vector<double> time_vector;
   // parameters
   const double radius = 1;
-  const double length = 10;
+  const double length = 40;
   // set start and end position/velocity/acceleration
   const Eigen::Vector3d start(radius, -length / 2, 0);
   Eigen::Matrix3d iS, fS;
+  iS.setZero();
+  fS.setZero();
   iS.col(0) = start;
   fS.col(0) = iS.col(0);
   waypoint_vector.push_back(start);
   // filling remainder of trajectory
-  const double max_speed = 4.0;
-  const double max_accel = 4.0;
-  const double initial_speed = 0.0;
-  const double straight_spacing = max_speed;
-  const size_t N_circle = 2;  // not counting the endpoint
+  const double max_speed = 3.75;
+  const double max_accel = 3.0;
+  const double linear_spacing = max_speed;
+  const size_t N_circle = 1;  // not counting the endpoint
   const double angle_spacing = M_PI / (N_circle + 1);
   Eigen::Vector3d next = start;
 
-  const int N_loops = 3;
+  const int N_loops = 1;
   for (int i = 0; i < N_loops; ++i)
   {
-    addStraight(next, { 0, length, 0 }, straight_spacing, waypoint_vector);
+    addStraight(next, { 0, length, 0 }, linear_spacing, waypoint_vector);
     addSemiCircle(next, { -2 * radius, 0, 0 }, angle_spacing, waypoint_vector);
-    addStraight(next, { 0, -length, 0 }, straight_spacing, waypoint_vector);
+    addStraight(next, { 0, -length, 0 }, linear_spacing, waypoint_vector);
     addSemiCircle(next, { 2 * radius, 0, 0 }, angle_spacing, waypoint_vector);
   }
 
+  double prev_speed = 0.0;
   for (const auto& wp : waypoint_vector)
   {
-    time_vector.push_back(1.0);
+    // limit acceleration in startup
+    const double vmax = std::min(max_speed, std::sqrt(std::pow(prev_speed, 2) + 2 * max_accel * linear_spacing));
+    const double t_accel = (vmax - prev_speed) / max_accel;
+    const double t_decel = 0.0;  // vmax / max_accel;
+    const double t_cruise = std::max(0.0, (linear_spacing - 0.5 * max_accel * std::pow(t_accel + t_decel, 2)) / vmax);
+
+    time_vector.push_back(t_accel + t_cruise + t_decel);
+    prev_speed = vmax;
   }
   // ROS_INFO("waypoint size before time allocation: %lu", waypoint_vector.size());
   // computeTimeAllocation(waypoint_vector, max_speed, max_accel, initial_speed, time_vector);
