@@ -1,10 +1,15 @@
 #include "traj_min_jerk.hpp"
 #include "traj_min_snap.hpp"
 
+#include "stdafx.h"
+#include <stdlib.h>
+#include "optimization.h"
+
 #include <cmath>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <chrono>
 
 #include <ros/ros.h>
 #include <nav_msgs/Path.h>
@@ -143,6 +148,78 @@ void addSemiCircle(Eigen::Vector3d& start, const Eigen::Vector3d& delta, const d
   start = finish;
 }
 
+min_jerk::JerkOpt jerkOpt;
+min_jerk::Trajectory minJerkTraj;
+Eigen::Matrix3d iS, fS;
+Eigen::VectorXd times;
+Eigen::MatrixXd route;
+int num_pieces;
+
+inline double g(const double x)
+{
+  return std::pow(std::max(x, 0.0), 2);
+}
+
+void function2(const alglib::real_1d_array& x, double& func, void* ptr)
+{
+  const double rho_t = 25.0;
+  const double rho_v = 200.0;
+  const double rho_a = 1.0;
+  const double vmax = 4.0;
+  const double amax = 6.0;
+  const double vmax2 = std::pow(vmax, 2);
+  const double amax2 = std::pow(amax, 2);
+
+  for (int i = 0; i < num_pieces; ++i)
+  {
+    times(i) = x[i];  // REVIEW: enforce positive times
+  }
+
+  Eigen::MatrixXd temp_route(route.rows(), route.cols() - 2);
+  for (int i = 1; i < route.cols() - 1; ++i)
+  {
+    temp_route.col(i - 1) = route.col(i);
+  }
+  static bool first = true;
+  if (first)
+  {
+    first = false;
+    std::cout << "route/times/temp: " << route.cols() << '\t' << times.size() << '\t' << temp_route.cols() << '\n';
+  }
+
+  jerkOpt.reset(iS, fS, num_pieces);
+  jerkOpt.generate(temp_route, times);
+  jerkOpt.getTraj(minJerkTraj);
+
+  // calculate objective
+  const double J_sigma = jerkOpt.getObjective();
+  double J_D_t = 0;
+  for (int i = 0; i < num_pieces; ++i)
+  {
+    J_D_t += times(i);
+  }
+  double J_D_v = 0;
+  double J_D_a = 0;
+  for (int i = 0; i < num_pieces - 1; ++i)
+  {
+    // T_{i} corresponds to q_{i} to q_{i+1} instead of q_{i-1} to q_{i}
+    const int j = i + 1;
+    // get variables of interest (index according to fig 4 of https://arxiv.org/pdf/2011.02662)
+    const Eigen::Vector3d q_im1 = route.col(j - 1);  // q_{i-1}
+    const Eigen::Vector3d q_i = route.col(j);        // q_{i}
+    const Eigen::Vector3d q_ip1 = route.col(j + 1);  // q_{i+1}
+    const double T_i = times(i);                     // T_{i}
+    const double T_ip1 = times(i + 1);               // T_{i+1}
+
+    J_D_v += g(((q_ip1 - q_im1) / (T_ip1 + T_i)).squaredNorm() - vmax2);
+    J_D_a += g((((q_ip1 - q_i) / T_ip1 - (q_i - q_im1) / T_i) / ((T_ip1 + T_i) / 2.0)).squaredNorm() - amax2);
+  }
+  // std::cout << "sigma/t/v/a: " << J_sigma << '\t' << J_D_t << '\t' << J_D_v << '\t' << J_D_a << '\n';
+  const double J_D = rho_t * J_D_t + rho_v * J_D_v + rho_a * J_D_a;
+
+  func = J_sigma + J_D;
+}
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "min_snap_traj_node");
@@ -150,9 +227,6 @@ int main(int argc, char** argv)
 
   ros::Publisher pub_waypoints = nh_.advertise<nav_msgs::Path>("waypoints", 1, true);
   ros::Publisher pub_path = nh_.advertise<nav_msgs::Path>("path", 1, true);
-
-  min_jerk::JerkOpt jerkOpt;
-  min_jerk::Trajectory minJerkTraj;
   ros::Rate lp(10);
 
   // create trajectory
@@ -160,10 +234,9 @@ int main(int argc, char** argv)
   std::vector<double> time_vector;
   // parameters
   const double radius = 1;
-  const double length = 40;
+  const double length = 50;
   // set start and end position/velocity/acceleration
   const Eigen::Vector3d start(radius, -length / 2, 0);
-  Eigen::Matrix3d iS, fS;
   iS.setZero();
   fS.setZero();
   iS.col(0) = start;
@@ -177,7 +250,7 @@ int main(int argc, char** argv)
   const double angle_spacing = M_PI / (N_circle + 1);
   Eigen::Vector3d next = start;
 
-  const int N_loops = 1;
+  const int N_loops = 3;
   for (int i = 0; i < N_loops; ++i)
   {
     addStraight(next, { 0, length, 0 }, linear_spacing, waypoint_vector);
@@ -187,13 +260,16 @@ int main(int argc, char** argv)
   }
 
   double prev_speed = 0.0;
-  for (const auto& wp : waypoint_vector)
+  // assuming waypoint vector contains start and stop
+  for (size_t i = 1; i < waypoint_vector.size(); ++i)
   {
     // limit acceleration in startup
     const double vmax = std::min(max_speed, std::sqrt(std::pow(prev_speed, 2) + 2 * max_accel * linear_spacing));
     const double t_accel = (vmax - prev_speed) / max_accel;
     const double t_decel = 0.0;  // vmax / max_accel;
     const double t_cruise = std::max(0.0, (linear_spacing - 0.5 * max_accel * std::pow(t_accel + t_decel, 2)) / vmax);
+
+    // std::cout << vmax << '\t' << t_accel << '\t' << t_decel << '\t' << t_cruise << '\n';
 
     time_vector.push_back(t_accel + t_cruise + t_decel);
     prev_speed = vmax;
@@ -211,9 +287,9 @@ int main(int argc, char** argv)
   // Eigen::VectorXd times(num_pieces);
   // times << 4, 2, 2, 4, 2, 2;
 
-  const int num_pieces = time_vector.size();
-  Eigen::VectorXd times(num_pieces);
-  Eigen::MatrixXd route(3, num_pieces - 1);
+  num_pieces = time_vector.size();
+  times = Eigen::VectorXd(time_vector.size());
+  route = Eigen::MatrixXd(3, waypoint_vector.size());
   // std::cout << "waypoints\n";
   // for (const auto& wp : waypoint_vector)
   // {
@@ -225,22 +301,57 @@ int main(int argc, char** argv)
   //   std::cout << t << '\t';
   // }
   // std::cout << '\n';
-  for (int i = 0; i < num_pieces; ++i)
+  for (size_t i = 0; i < time_vector.size(); ++i)
   {
     times(i) = time_vector[i];
-    // because waypoint_vector includes start
-    if (i != 0)
-    {
-      route.col(i - 1) = waypoint_vector[i];
-    }
+  }
+  for (size_t i = 0; i < waypoint_vector.size(); ++i)
+  {
+    // NOTE: waypoints includes start and end
+    route.col(i) = waypoint_vector[i];
   }
 
-  // std::cout << "route:\n" << route << '\n';
-  // std::cout << "times:\n" << times.transpose() << '\n';
+  // std::cout << "iS: " << iS.col(0).transpose() << '\n';
+  // for (int i = 0; i < route.cols(); ++i)
+  // {
+  //   std::cout << route.col(i).transpose() << '\n';
+  // }
+  // std::cout << "fS: " << fS.col(0).transpose() << '\n';
 
-  jerkOpt.reset(iS, fS, num_pieces);
-  jerkOpt.generate(route, times);
-  jerkOpt.getTraj(minJerkTraj);
+  try
+  {
+    alglib::real_1d_array x;
+    x.setlength(num_pieces);
+    for (int i = 0; i < num_pieces; ++i)
+    {
+      x[i] = time_vector[i];
+    }
+
+    double epsg = 0.0000000001;
+    double epsf = 0;
+    double epsx = 0;
+    double diffstep = 1.0e-6;
+    alglib::ae_int_t maxits = 0;
+    alglib::minlbfgsstate state;
+    alglib::minlbfgsreport rep;
+
+    const auto tic = std::chrono::high_resolution_clock::now();
+    alglib::minlbfgscreatef(5, x, diffstep, state);
+    alglib::minlbfgssetcond(state, epsg, epsf, epsx, maxits);
+    alglib::minlbfgsoptimize(state, function2);
+    alglib::minlbfgsresults(state, x, rep);
+    const auto toc = std::chrono::high_resolution_clock::now();
+
+    printf("terminationType: %d\n", int(rep.terminationtype));  // EXPECTED: 4
+    printf("iterationsCount: %d\n", int(rep.iterationscount));
+    printf("optimized times: %s\n", x.tostring(2).c_str());  // EXPECTED: [-3,3]
+    printf("Optimization duration: %li ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count());
+  }
+  catch (alglib::ap_error alglib_exception)
+  {
+    printf("ALGLIB exception with message '%s'\n", alglib_exception.msg.c_str());
+    return 1;
+  }
 
   std::cout << "Optim finished with:"
             << "\n\tduration: " << minJerkTraj.getTotalDuration() << "\n\tmax_vel: " << minJerkTraj.getMaxVelRate()

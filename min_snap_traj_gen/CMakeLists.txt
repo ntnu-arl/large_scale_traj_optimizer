@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_package(
-#  INCLUDE_DIRS include
+ INCLUDE_DIRS include
 #  LIBRARIES image_receiver
  CATKIN_DEPENDS roscpp geometry_msgs nav_msgs
 #  DEPENDS system_lib
@@ -25,6 +25,7 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
     ../include
+    include/thirdparty/alglib-cpp/src
 )
 
 add_executable(rectangle_node src/rectangle_node.cpp)
@@ -32,7 +33,10 @@ target_link_libraries(rectangle_node
   ${catkin_LIBRARIES}
 )
 
-add_executable(rounded_rectangle_node src/rounded_rectangle_node.cpp)
+file(GLOB ALGLIB_SRC ${CMAKE_CURRENT_SOURCE_DIR}/include/thirdparty/alglib-cpp/src/*.cpp)
+add_executable(rounded_rectangle_node
+  ${ALGLIB_SRC}
+  src/rounded_rectangle_node.cpp)
 target_link_libraries(rounded_rectangle_node
   ${catkin_LIBRARIES}
 )
