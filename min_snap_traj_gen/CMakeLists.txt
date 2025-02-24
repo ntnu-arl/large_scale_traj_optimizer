@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.0.2)
 
 project(min_snap_gen)
 
@@ -25,7 +25,8 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
     ../include
-    include/thirdparty/alglib-cpp/src
+    include
+    # include/alglib-cpp/src
 )
 
 add_executable(rectangle_node src/rectangle_node.cpp)
@@ -34,9 +35,9 @@ target_link_libraries(rectangle_node
 )
 
 file(GLOB ALGLIB_SRC ${CMAKE_CURRENT_SOURCE_DIR}/include/thirdparty/alglib-cpp/src/*.cpp)
-add_executable(rounded_rectangle_node
+add_executable(rounded_rectangle_node 
+  src/rounded_rectangle_node.cpp
+  src/trajectory_generator_base.cpp
   ${ALGLIB_SRC}
-  src/rounded_rectangle_node.cpp)
-target_link_libraries(rounded_rectangle_node
-  ${catkin_LIBRARIES}
 )
+target_link_libraries(rounded_rectangle_node ${catkin_LIBRARIES})
