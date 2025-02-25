@@ -77,6 +77,8 @@ TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
   pnh.param<double>("optimization/rho_a", rho_a_, 1.0);
   pnh.param<double>("optimization/vmax", vmax_, 4.0);
   pnh.param<double>("optimization/amax", amax_, 4.0);
+  pnh.param<int>("optimization/max_iter", max_iter_, 500);
+  pnh.param<int>("optimization/M", M_, 5);
   std::vector<double> d_param;
   pnh.param<std::vector<double>>("offset", d_param, { 0, 0, 1.5 });
   offset_ << d_param[0], d_param[1], d_param[2];
@@ -174,6 +176,7 @@ void TrajectoryGeneratorBase::updateTimes()
 void TrajectoryGeneratorBase::run()
 {
   updateWaypoints();
+  // TODO: rotate parameter for waypoints
   updateTimes();
   optimize();
   updateMessages();
@@ -267,16 +270,17 @@ bool TrajectoryGeneratorBase::optimize()
       x[i] = time_vector_[i];
     }
 
+    // TODO: set better stopping criteria
     double epsg = 0.0000000001;
     double epsf = 0;
     double epsx = 0;
     double diffstep = 1.0e-6;
-    alglib::ae_int_t maxits = 0;
+    alglib::ae_int_t maxits = (alglib::ae_int_t)max_iter_;
     alglib::minlbfgsstate state;
     alglib::minlbfgsreport rep;
 
     const auto tic = std::chrono::high_resolution_clock::now();
-    alglib::minlbfgscreatef(5, x, diffstep, state);
+    alglib::minlbfgscreatef((alglib::ae_int_t)M_, x, diffstep, state);
     alglib::minlbfgssetcond(state, epsg, epsf, epsx, maxits);
     alglib::minlbfgsoptimize(state, objectiveFunction);
     alglib::minlbfgsresults(state, x, rep);

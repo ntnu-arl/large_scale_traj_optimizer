@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="min_snap_gen" type="lemniscate_node" name="min_snap_traj" output="screen">
+  </node>
+</launch>

@@ -1,4 +1,4 @@
 <launch>
-  <node pkg="min_snap_gen" type="rounded_rectangle_node" name="rounded_rectangle_node" output="screen">
+  <node pkg="min_snap_gen" type="rounded_rectangle_node" name="min_snap_traj" output="screen">
   </node>
 </launch>

@@ -85,6 +85,9 @@ private:
 
   std::string frame_id_;
 
+  int max_iter_;
+  int M_; // recommended 3 <= M <= 7
+
   nav_msgs::Path wp_msg_;
   nav_msgs::Path path_msg_;
   trajectory_msgs::MultiDOFJointTrajectory takeoff_msg_;

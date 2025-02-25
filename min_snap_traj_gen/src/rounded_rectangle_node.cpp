@@ -62,7 +62,6 @@ void RoundedRectangle::updateWaypoints()
   const double angle_spacing = M_PI / (num_circle_pts_ + 1);
   Eigen::Vector3d next = start;
 
-  const int num_loops_ = 3;
   for (int i = 0; i < num_loops_; ++i)
   {
     addStraight(next, { 0, length_, 0 }, linear_spacing_, waypoint_vector_);

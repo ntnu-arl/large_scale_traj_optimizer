@@ -38,9 +38,17 @@ target_link_libraries(rectangle_node
 )
 
 file(GLOB ALGLIB_SRC ${CMAKE_CURRENT_SOURCE_DIR}/include/thirdparty/alglib-cpp/src/*.cpp)
+
 add_executable(rounded_rectangle_node 
   src/rounded_rectangle_node.cpp
   src/trajectory_generator_base.cpp
   ${ALGLIB_SRC}
 )
 target_link_libraries(rounded_rectangle_node ${catkin_LIBRARIES})
+
+add_executable(lemniscate_node 
+  src/lemniscate_node.cpp
+  src/trajectory_generator_base.cpp
+  ${ALGLIB_SRC}
+)
+target_link_libraries(lemniscate_node ${catkin_LIBRARIES})
