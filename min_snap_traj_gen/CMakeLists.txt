@@ -10,14 +10,17 @@ find_package(Eigen3 REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  tf2
+  std_srvs
   geometry_msgs
   nav_msgs
+  trajectory_msgs
 )
 
 catkin_package(
  INCLUDE_DIRS include
 #  LIBRARIES image_receiver
- CATKIN_DEPENDS roscpp geometry_msgs nav_msgs
+ CATKIN_DEPENDS roscpp tf2 std_srvs geometry_msgs nav_msgs trajectory_msgs
 #  DEPENDS system_lib
 )
 

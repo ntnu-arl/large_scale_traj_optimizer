@@ -12,6 +12,14 @@ public:
   Trajectory() = default;
   ~Trajectory() = default;
 
+  void reserve(const int N)
+  {
+    time_.reserve(N);
+    pos_.reserve(N);
+    vel_.reserve(N);
+    acc_.reserve(N);
+  }
+
   void add(const double time, const Eigen::Vector3d& pos, const Eigen::Vector3d& vel, const Eigen::Vector3d& acc)
   {
     time_.push_back(time);

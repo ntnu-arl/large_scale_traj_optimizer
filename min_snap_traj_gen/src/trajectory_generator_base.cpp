@@ -34,12 +34,6 @@ void objectiveFunction(const alglib::real_1d_array& x, double& func, void* ptr)
   {
     route.col(i - 1) = waypoints_.col(i);
   }
-  static bool first = true;
-  if (first)
-  {
-    first = false;
-    std::cout << "route/times/temp: " << waypoints_.cols() << '\t' << times_.size() << '\t' << route.cols() << '\n';
-  }
 
   jerkOpt_.reset(iS_, fS_, num_pieces_);
   jerkOpt_.generate(route, times_);
@@ -76,38 +70,82 @@ void objectiveFunction(const alglib::real_1d_array& x, double& func, void* ptr)
 
 TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
 {
-  // TODO: load params
-  pnh.param<double>("dt", dt_, 0.01);
+  pnh.param<double>("dt", dt_, 0.05);
   pnh.param<double>("optimization/rho_t", rho_t_, 25.0);
   pnh.param<double>("optimization/rho_v", rho_v_, 200.0);
   pnh.param<double>("optimization/rho_a", rho_a_, 1.0);
   pnh.param<double>("optimization/vmax", vmax_, 4.0);
   pnh.param<double>("optimization/amax", amax_, 4.0);
+  std::vector<double> d_param;
+  pnh.param<std::vector<double>>("offset", d_param, { 0, 0, 1.5 });
+  offset_ << d_param[0], d_param[1], d_param[2];
+  pnh.param<std::string>("frame_id", frame_id_, "map");
+  pnh.param<bool>("align_yaw", align_yaw_, true);
 
   pub_waypoints_ = pnh.advertise<nav_msgs::Path>("waypoints", 1, true);
   pub_path_ = pnh.advertise<nav_msgs::Path>("path", 1, true);
-  // TODO: pub traj
+  pub_trajectory_ = pnh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 1, true);
+
+  srv_takeoff_ = pnh.advertiseService("takeoff", &TrajectoryGeneratorBase::takeoffService, this);
+  srv_start_ = pnh.advertiseService("start", &TrajectoryGeneratorBase::startService, this);
 
   timer_publish_ = pnh.createTimer(ros::Duration(0.1), std::bind(&TrajectoryGeneratorBase::publishOnTimer, this));
 }
 
-void TrajectoryGeneratorBase::fillPose(const Eigen::Vector3d& vec, geometry_msgs::Pose& msg)
+void TrajectoryGeneratorBase::fillPose(const Eigen::Vector3d& pos, geometry_msgs::Pose& msg)
 {
-  msg.position.x = vec(0);
-  msg.position.y = vec(1);
-  msg.position.z = vec(2);
+  msg.position.x = pos(0);
+  msg.position.y = pos(1);
+  msg.position.z = pos(2);
   msg.orientation.w = 1.0;
   msg.orientation.x = 0.0;
   msg.orientation.y = 0.0;
   msg.orientation.z = 0.0;
 }
 
-void TrajectoryGeneratorBase::fillPoseStamped(const std::string& frame_id, const ros::Time& stamp,
-                                              const Eigen::Vector3d& vec, geometry_msgs::PoseStamped& msg)
+void TrajectoryGeneratorBase::fillPose(const Eigen::Vector3d& pos, const double yaw, geometry_msgs::Pose& msg)
 {
-  msg.header.frame_id = frame_id;
-  msg.header.stamp = stamp;
-  fillPose(vec, msg.pose);
+  msg.position.x = pos(0);
+  msg.position.y = pos(1);
+  msg.position.z = pos(2);
+  tf2::Quaternion q;
+  q.setRPY(0.0, 0.0, yaw);
+  msg.orientation = tf2::toMsg(q);
+}
+
+void TrajectoryGeneratorBase::fillMultiDOFTrajectoryPoint(const Eigen::Vector3d& pos, const Eigen::Vector3d& vel,
+                                                          const Eigen::Vector3d& acc, const double yaw,
+                                                          const double yaw_rate, const double time,
+                                                          trajectory_msgs::MultiDOFJointTrajectoryPoint& point)
+{
+  geometry_msgs::Transform tf;
+  tf.translation.x = pos(0);
+  tf.translation.y = pos(1);
+  tf.translation.z = pos(2);
+  tf2::Quaternion q;
+  q.setRPY(0.0, 0.0, yaw);
+  tf.rotation = tf2::toMsg(q);
+
+  geometry_msgs::Twist vel_msg;
+  vel_msg.linear.x = vel(0);
+  vel_msg.linear.y = vel(1);
+  vel_msg.linear.z = vel(2);
+  vel_msg.angular.x = 0.0;
+  vel_msg.angular.y = 0.0;
+  vel_msg.angular.z = std::isnan(yaw_rate) ? 0.0 : yaw_rate;
+
+  geometry_msgs::Twist acc_msg;
+  acc_msg.linear.x = acc(0);
+  acc_msg.linear.y = acc(1);
+  acc_msg.linear.z = acc(2);
+  acc_msg.angular.x = 0.0;
+  acc_msg.angular.y = 0.0;
+  acc_msg.angular.z = 0.0;
+
+  point.transforms = { tf };
+  point.velocities = { vel_msg };
+  point.accelerations = { acc_msg };
+  point.time_from_start = ros::Duration(time);
 }
 
 // Assuming waypoint_vector_ includes start and end
@@ -133,17 +171,23 @@ void TrajectoryGeneratorBase::run()
 {
   updateWaypoints();
   updateTimes();
-  optimize(time_vector_, waypoint_vector_);
+  optimize();
   updateMessages();
 }
 
 void TrajectoryGeneratorBase::updateMessages()
 {
+  std_msgs::Header header;
+  header.frame_id = frame_id_;
+  header.stamp = ros::Time::now();  // REVIEW: not synchronized? Does it matter?
+
   geometry_msgs::PoseStamped ps;
+  ps.header = header;
 
   const Eigen::MatrixXd positions = minJerkTraj_.getPositions();
-  wp_msg_.header.frame_id = "map";
-  wp_msg_.header.stamp = ros::Time::now();
+
+  wp_msg_.header = header;
+  wp_msg_.poses.reserve(positions.cols());
   for (int i = 0; i < positions.cols(); ++i)
   {
     fillPose(positions.col(i), ps.pose);
@@ -151,20 +195,45 @@ void TrajectoryGeneratorBase::updateMessages()
   }
 
   Trajectory traj;
-  path_msg_.header.frame_id = "map";
-  path_msg_.header.stamp = ros::Time::now();
+  path_msg_.header = header;
+  traj_msg_.header = header;
+  traj_msg_.joint_names.push_back("joint");
+
+  trajectory_msgs::MultiDOFJointTrajectoryPoint tp;
+
   double time = 0.0;
   const double duration = minJerkTraj_.getTotalDuration();
+  const int approx_size = int(duration / dt_);
+
+  traj.reserve(approx_size);
+  path_msg_.poses.reserve(approx_size);
+  traj_msg_.points.reserve(approx_size);
   while (time < duration)
   {
     const Eigen::Vector3d p = minJerkTraj_.getPos(time);
     const Eigen::Vector3d v = minJerkTraj_.getVel(time);
     const Eigen::Vector3d a = minJerkTraj_.getAcc(time);
 
-    traj.add(time, p, v, a);
-    fillPose(p, ps.pose);
+    const double vx = v(0);
+    const double vy = v(1);
+    const double ax = a(0);
+    const double ay = a(1);
+    double yaw = 0.0;
+    double yaw_rate = 0.0;
+    if (align_yaw_)
+    {
+      yaw = std::atan2(vy, vx);
+      yaw_rate = (vx * ay - vy * ax) / (vx * vx + vy * vy);
+    }
 
+    traj.add(time, p, v, a);
+
+    fillPose(p, yaw, ps.pose);
     path_msg_.poses.push_back(ps);
+
+    // REVIEW: time or time+dt
+    fillMultiDOFTrajectoryPoint(p, v, a, yaw, yaw_rate, time + dt_, tp);
+    traj_msg_.points.push_back(tp);
 
     time += dt_;
   }
@@ -172,15 +241,17 @@ void TrajectoryGeneratorBase::updateMessages()
   writeFile(traj);
 }
 
-bool TrajectoryGeneratorBase::optimize(const std::vector<double>& time_vector,
-                                       const std::vector<Eigen::Vector3d>& waypoint_vector)
+bool TrajectoryGeneratorBase::optimize()
 {
-  num_pieces_ = time_vector.size();
-  times_ = Eigen::VectorXd(time_vector.size());
-  waypoints_ = Eigen::MatrixXd(3, waypoint_vector.size());
-  for (size_t i = 0; i < waypoint_vector.size(); ++i)
+  num_pieces_ = time_vector_.size();
+  times_ = Eigen::VectorXd(time_vector_.size());
+  waypoints_ = Eigen::MatrixXd(3, waypoint_vector_.size());
+
+  iS_.col(0) += offset_;
+  fS_.col(0) += offset_;
+  for (size_t i = 0; i < waypoint_vector_.size(); ++i)
   {
-    waypoints_.col(i) = waypoint_vector[i];
+    waypoints_.col(i) = waypoint_vector_[i] + offset_;
   }
 
   try
@@ -189,7 +260,7 @@ bool TrajectoryGeneratorBase::optimize(const std::vector<double>& time_vector,
     x.setlength(num_pieces_);
     for (int i = 0; i < num_pieces_; ++i)
     {
-      x[i] = time_vector[i];
+      x[i] = time_vector_[i];
     }
 
     double epsg = 0.0000000001;
@@ -227,8 +298,44 @@ void TrajectoryGeneratorBase::publishOnTimer()
   pub_waypoints_.publish(wp_msg_);
   pub_path_.publish(path_msg_);
 
-  // TODO: publish takeoff point
-  // TODO: publish multidof trajectory
+  if (!takeoff_msg_.points.empty())
+  {
+    pub_trajectory_.publish(takeoff_msg_);
+  }
+}
+
+bool TrajectoryGeneratorBase::takeoffService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response)
+{
+  ROS_INFO("Takeoff service");
+
+  if (traj_msg_.points.empty())
+  {
+    ROS_ERROR("Service called while trajectory has %li points", traj_msg_.points.size());
+    return false;
+  }
+
+  takeoff_msg_.header = traj_msg_.header;
+  takeoff_msg_.joint_names = traj_msg_.joint_names;
+  takeoff_msg_.points = { traj_msg_.points[0] };
+
+  return true;
+}
+
+bool TrajectoryGeneratorBase::startService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response)
+{
+  ROS_INFO("Start service");
+
+  if (takeoff_msg_.points.empty())
+  {
+    ROS_ERROR("Service called pre-takeoff");
+    return false;
+  }
+
+  takeoff_msg_.points.clear();
+  ROS_INFO("Publishing %li point trajectory", traj_msg_.points.size());
+  pub_trajectory_.publish(traj_msg_);
+
+  return true;
 }
 
 void TrajectoryGeneratorBase::writeFile(const Trajectory& traj, const std::string& file_name)

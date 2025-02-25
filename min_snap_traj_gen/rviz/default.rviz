@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /MultiDOFJointTrajectory1
       Splitter Ratio: 0.5
     Tree Height: 1079
   - Class: rviz/Selection
@@ -108,6 +109,34 @@ Visualization Manager:
       Topic: /rounded_rectangle_node/path
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Class: multi_dof_joint_trajectory_rviz_plugins/MultiDOFJointTrajectory
+      Color Acceleration Angular: 191; 0; 191
+      Color Acceleration Linear: 255; 255; 0
+      Color Connection: 255; 255; 255
+      Color Velocity Angular: 0; 102; 0
+      Color Velocity Linear: 102; 0; 0
+      Diameter Arrows: 0.05000000074505806
+      Enabled: true
+      Font Size: 0.05000000074505806
+      History Length: 1
+      Name: MultiDOFJointTrajectory
+      Queue Size: 10
+      Scale Acceleration Angular: 1
+      Scale Acceleration Linear: 1
+      Scale Velocity Angular: 1
+      Scale Velocity Linear: 1
+      Show Acceleration Angular: false
+      Show Acceleration Linear: false
+      Show Caption: true
+      Show Connections: true
+      Show Transform Rotation: true
+      Show Velocity Angular: false
+      Show Velocity Linear: false
+      Size Transform Rotation: 0.20000000298023224
+      Topic: /rounded_rectangle_node/trajectory
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -136,7 +165,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 61.30393600463867
+      Distance: 53.94746398925781
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -144,17 +173,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: -0.005874317139387131
+        Y: -0.7334423661231995
+        Z: 9.094947017729282e-12
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.4397964477539062
+      Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 6.278584003448486
+      Yaw: 3.1335835456848145
     Saved: ~
 Window Geometry:
   Displays:
