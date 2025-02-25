@@ -19,13 +19,6 @@ void Lemniscate::updateWaypoints()
 
     waypoint_vector_.push_back(f0(angle));
   }
-
-  // TODO: do in base?
-  // set start and end position/velocity/acceleration
-  iS_.setZero();
-  fS_.setZero();
-  iS_.col(0) = waypoint_vector_[0];
-  fS_.col(0) = iS_.col(0);
 }
 
 Eigen::Vector3d Lemniscate::f0(const double angle)

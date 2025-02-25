@@ -51,12 +51,8 @@ void RoundedRectangle::addSemiCircle(Eigen::Vector3d& start, const Eigen::Vector
 
 void RoundedRectangle::updateWaypoints()
 {
-  // set start and end position/velocity/acceleration
+  // set start/end position
   const Eigen::Vector3d start(radius_, -length_ / 2, 0);
-  iS_.setZero();
-  fS_.setZero();
-  iS_.col(0) = start;
-  fS_.col(0) = iS_.col(0);
   waypoint_vector_.push_back(start);
   // filling remainder of trajectory
   const double angle_spacing = M_PI / (num_circle_pts_ + 1);

@@ -55,6 +55,7 @@ public:
 
   void loadParams(ros::NodeHandle& pnh);
   virtual void updateWaypoints();
+  virtual void updateStartFinish();
   virtual void updateTimes();
   virtual void rotateWaypoints();
   double interpolateHeight(const double time, const double duration, const double height_gain);

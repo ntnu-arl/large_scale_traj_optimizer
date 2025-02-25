@@ -22,13 +22,6 @@ void Ellipse::updateWaypoints()
 
     waypoint_vector_.push_back(f0(time, angle, duration));
   }
-
-  // TODO: do in base?
-  // set start and end position/velocity/acceleration
-  iS_.setZero();
-  fS_.setZero();
-  iS_.col(0) = waypoint_vector_.front();
-  fS_.col(0) = waypoint_vector_.back();
 }
 
 Eigen::Vector3d Ellipse::f0(const double time, const double angle, const double duration)

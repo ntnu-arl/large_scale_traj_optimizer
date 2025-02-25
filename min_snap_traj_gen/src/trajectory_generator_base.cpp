@@ -165,6 +165,15 @@ void TrajectoryGeneratorBase::updateWaypoints()
   waypoint_vector_.push_back(Eigen::Vector3d(0, 0, 0));
 }
 
+void TrajectoryGeneratorBase::updateStartFinish()
+{
+  // set start and end position/velocity/acceleration
+  iS_.setZero();
+  fS_.setZero();
+  iS_.col(0) = waypoint_vector_.front();
+  fS_.col(0) = waypoint_vector_.back();
+}
+
 // Assuming waypoint_vector_ includes start and end
 void TrajectoryGeneratorBase::updateTimes()
 {
@@ -210,6 +219,7 @@ double TrajectoryGeneratorBase::interpolateHeight(const double time, const doubl
 void TrajectoryGeneratorBase::run()
 {
   updateWaypoints();
+  updateStartFinish();
   if (rotate_xy_)
   {
     rotateWaypoints();
@@ -331,6 +341,8 @@ bool TrajectoryGeneratorBase::optimize()
              std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count());
     ROS_INFO("Trajectory stats:\n\tduration: %f s\n\tmax_vel: %f m/s\n\tmax_acc: %f m/s^2",
              minJerkTraj_.getTotalDuration(), minJerkTraj_.getMaxVelRate(), minJerkTraj_.getMaxAccRate());
+
+    // print max yaw rate
 
     return true;
   }
