@@ -70,6 +70,7 @@ void objectiveFunction(const alglib::real_1d_array& x, double& func, void* ptr)
 
 TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
 {
+  // parameters
   pnh.param<double>("dt", dt_, 0.05);
   pnh.param<double>("optimization/rho_t", rho_t_, 25.0);
   pnh.param<double>("optimization/rho_v", rho_v_, 200.0);
@@ -82,13 +83,16 @@ TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
   pnh.param<std::string>("frame_id", frame_id_, "map");
   pnh.param<bool>("align_yaw", align_yaw_, true);
 
+  // publishers
   pub_waypoints_ = pnh.advertise<nav_msgs::Path>("waypoints", 1, true);
   pub_path_ = pnh.advertise<nav_msgs::Path>("path", 1, true);
   pub_trajectory_ = pnh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 1, true);
 
+  // services
   srv_takeoff_ = pnh.advertiseService("takeoff", &TrajectoryGeneratorBase::takeoffService, this);
   srv_start_ = pnh.advertiseService("start", &TrajectoryGeneratorBase::startService, this);
 
+  // main publish timer
   timer_publish_ = pnh.createTimer(ros::Duration(0.1), std::bind(&TrajectoryGeneratorBase::publishOnTimer, this));
 }
 

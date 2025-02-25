@@ -2,7 +2,12 @@
 
 RoundedRectangle::RoundedRectangle(ros::NodeHandle& pnh) : TrajectoryGeneratorBase(pnh)
 {
-  // TODO: load params
+  // parameters
+  pnh.param<double>("radius", radius_, 1.0);
+  pnh.param<double>("length", length_, 50.0);
+  pnh.param<int>("num_loops", num_loops_, 1);
+  pnh.param<double>("linear_spacing", linear_spacing_, 4.0);
+  pnh.param<int>("num_circle_points", num_circle_pts_, 1);
 }
 
 void RoundedRectangle::addStraight(Eigen::Vector3d& start, const Eigen::Vector3d& delta, const double spacing,
