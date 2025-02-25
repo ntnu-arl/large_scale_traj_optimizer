@@ -53,7 +53,6 @@ public:
   {
   }
 
-  void loadParams(ros::NodeHandle& pnh);
   virtual void updateWaypoints();
   virtual void updateStartFinish();
   virtual void updateTimes();

@@ -3,9 +3,9 @@ frame_id: "map"
 optimization:
   rho_t: 25.0
   rho_v: 200.0
-  rho_a: 1.0
-  vmax: 4.0
-  amax: 4.0
+  rho_a: 200.0
+  vmax: 3.9
+  amax: 2.0
   max_iter: 500
   M: 5
 
