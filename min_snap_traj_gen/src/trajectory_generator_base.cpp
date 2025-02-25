@@ -71,7 +71,7 @@ void objectiveFunction(const alglib::real_1d_array& x, double& func, void* ptr)
 TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
 {
   // parameters
-  pnh.param<double>("dt", dt_, 0.05);
+  pnh.param<double>("traj_dt", dt_, 0.05);
   pnh.param<double>("optimization/rho_t", rho_t_, 25.0);
   pnh.param<double>("optimization/rho_v", rho_v_, 200.0);
   pnh.param<double>("optimization/rho_a", rho_a_, 1.0);
@@ -84,6 +84,7 @@ TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
   offset_ << d_param[0], d_param[1], d_param[2];
   pnh.param<std::string>("frame_id", frame_id_, "map");
   pnh.param<bool>("align_yaw", align_yaw_, true);
+  pnh.param<bool>("rotate_xy", rotate_xy_, false);
 
   // publishers
   pub_waypoints_ = pnh.advertise<nav_msgs::Path>("waypoints", 1, true);
@@ -173,10 +174,41 @@ void TrajectoryGeneratorBase::updateTimes()
   }
 }
 
+void TrajectoryGeneratorBase::rotateWaypoints()
+{
+  // start
+  {
+    const Eigen::VectorXd row_0 = iS_.row(0);
+    const Eigen::VectorXd row_1 = iS_.row(1);
+    iS_.row(0) = row_1;
+    iS_.row(1) = row_0;
+  }
+
+  // finish
+  {
+    const Eigen::VectorXd row_0 = fS_.row(0);
+    const Eigen::VectorXd row_1 = fS_.row(1);
+    fS_.row(0) = row_1;
+    fS_.row(1) = row_0;
+  }
+
+  // all waypoints
+  for (Eigen::Vector3d& wp : waypoint_vector_)
+  {
+    // swap
+    const double temp = wp.x();
+    wp.x() = wp.y();
+    wp.y() = temp;
+  }
+}
+
 void TrajectoryGeneratorBase::run()
 {
   updateWaypoints();
-  // TODO: rotate parameter for waypoints
+  if (rotate_xy_)
+  {
+    rotateWaypoints();
+  }
   updateTimes();
   optimize();
   updateMessages();
@@ -269,6 +301,9 @@ bool TrajectoryGeneratorBase::optimize()
     {
       x[i] = time_vector_[i];
     }
+
+    ROS_INFO("Optimizing with %li waypoints", waypoint_vector_.size());
+    std::cout << "iS_: \n" << iS_ << "\nfS_:\n" << fS_ << '\n';
 
     // TODO: set better stopping criteria
     double epsg = 0.0000000001;

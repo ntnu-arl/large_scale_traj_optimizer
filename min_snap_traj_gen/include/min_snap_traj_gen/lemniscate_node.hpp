@@ -19,6 +19,6 @@ private:
   double kx_;
   double ky_;
   double omega_;
-  int num_loops_;
+  double num_loops_;
   double dt_;  // TODO: check if this interfere with parent
 };

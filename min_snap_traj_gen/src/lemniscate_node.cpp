@@ -6,8 +6,8 @@ Lemniscate::Lemniscate(ros::NodeHandle& pnh) : TrajectoryGeneratorBase(pnh)
   pnh.param<double>("scale_x", kx_, 1.0);
   pnh.param<double>("scale_y", ky_, 1.0);
   pnh.param<double>("omega", omega_, 1.0);
-  pnh.param<int>("num_loops", num_loops_, 3);
-  pnh.param<double>("dt", dt_, 0.25);
+  pnh.param<double>("num_loops", num_loops_, 3.0);
+  pnh.param<double>("wp_dt", dt_, 0.25);
 }
 
 void Lemniscate::updateWaypoints()
@@ -20,6 +20,7 @@ void Lemniscate::updateWaypoints()
     waypoint_vector_.push_back(f0(angle));
   }
 
+  // TODO: do in base?
   // set start and end position/velocity/acceleration
   iS_.setZero();
   fS_.setZero();

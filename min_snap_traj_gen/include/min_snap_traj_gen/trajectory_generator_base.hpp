@@ -53,9 +53,10 @@ public:
   {
   }
 
-  void loadParams();
+  void loadParams(ros::NodeHandle& pnh);
   virtual void updateWaypoints();
   virtual void updateTimes();
+  virtual void rotateWaypoints();
   void run();
   bool optimize();
 
@@ -82,11 +83,12 @@ private:
   double dt_;
   Eigen::Vector3d offset_;
   bool align_yaw_;
+  bool rotate_xy_;  // flip x and y (i.e. rotate waypoints by 90 deg)
 
   std::string frame_id_;
 
   int max_iter_;
-  int M_; // recommended 3 <= M <= 7
+  int M_;  // recommended 3 <= M <= 7
 
   nav_msgs::Path wp_msg_;
   nav_msgs::Path path_msg_;

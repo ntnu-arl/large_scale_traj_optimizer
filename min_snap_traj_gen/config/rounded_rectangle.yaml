@@ -1,0 +1,21 @@
+frame_id: "map"
+
+optimization:
+  rho_t: 25.0
+  rho_v: 200.0
+  rho_a: 1.0
+  vmax: 4.0
+  amax: 4.0
+  max_iter: 500
+  M: 5
+
+traj_dt: 0.05
+offset: [0, 0, 1.5]
+align_yaw: true
+rotate_xy: false
+
+radius: 1.0
+length: 50.0
+num_loops: 3.0
+linear_spacing: 4.0
+num_circle_points: 1

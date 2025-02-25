@@ -1,4 +1,5 @@
 <launch>
-  <node pkg="min_snap_gen" type="lemniscate_node" name="min_snap_traj" output="screen">
+  <node pkg="min_snap_gen" type="lemniscate_node" name="min_snap_traj" output="screen" clear_params="true">
+    <rosparam file="$(find min_snap_gen)/config/lemniscate.yaml" command="load"/>
   </node>
 </launch>
