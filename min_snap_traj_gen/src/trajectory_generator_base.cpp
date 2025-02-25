@@ -26,7 +26,7 @@ void objectiveFunction(const alglib::real_1d_array& x, double& func, void* ptr)
 
   for (int i = 0; i < num_pieces_; ++i)
   {
-    times_(i) = x[i];  // REVIEW: enforce positive times
+    times_(i) = std::abs(x[i]);  // REVIEW: enforce positive times
   }
 
   Eigen::MatrixXd route(waypoints_.rows(), waypoints_.cols() - 2);
