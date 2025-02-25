@@ -52,3 +52,10 @@ add_executable(lemniscate_node
   ${ALGLIB_SRC}
 )
 target_link_libraries(lemniscate_node ${catkin_LIBRARIES})
+
+add_executable(ellipse_node
+  src/ellipse_node.cpp
+  src/trajectory_generator_base.cpp
+  ${ALGLIB_SRC}
+)
+target_link_libraries(ellipse_node ${catkin_LIBRARIES})

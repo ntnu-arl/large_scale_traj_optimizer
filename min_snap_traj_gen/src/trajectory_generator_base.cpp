@@ -202,6 +202,11 @@ void TrajectoryGeneratorBase::rotateWaypoints()
   }
 }
 
+double TrajectoryGeneratorBase::interpolateHeight(const double time, const double duration, const double height_gain)
+{
+  return height_gain * time / duration;
+}
+
 void TrajectoryGeneratorBase::run()
 {
   updateWaypoints();

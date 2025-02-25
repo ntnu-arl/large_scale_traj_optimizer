@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="min_snap_gen" type="ellipse_node" name="min_snap_traj" output="screen" clear_params="true">
+    <rosparam file="$(find min_snap_gen)/config/ellipse.yaml" command="load"/>
+  </node>
+</launch>

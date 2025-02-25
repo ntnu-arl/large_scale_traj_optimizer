@@ -57,6 +57,7 @@ public:
   virtual void updateWaypoints();
   virtual void updateTimes();
   virtual void rotateWaypoints();
+  double interpolateHeight(const double time, const double duration, const double height_gain);
   void run();
   bool optimize();
 
