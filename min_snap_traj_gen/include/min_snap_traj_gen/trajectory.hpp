@@ -63,6 +63,11 @@ public:
     return yaw_rate_[i];
   }
 
+  void setYaw(const size_t i, const double yaw)
+  {
+    yaw_[i] = yaw;
+  }
+
   size_t size() const
   {
     return time_.size();

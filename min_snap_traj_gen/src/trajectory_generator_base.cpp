@@ -294,12 +294,13 @@ void TrajectoryGeneratorBase::updateMessages()
     time += dt_;
   }
 
-  // TODO: should first yaw be aligned with second yaw? Bc first yaw always starts 0
-  // TODO: rviz buttons
-
   if (align_yaw_)
   {
     std::cout << "\tmax yaw rate: " << max_yaw_rate * 180.0 / M_PI << " deg" << '\n';
+    // set first yaw equal to second, so takeoff matches
+    traj.setYaw(0, traj.getYaw(1));
+    path_msg_.poses[0].pose.orientation = path_msg_.poses[1].pose.orientation;
+    traj_msg_.points[0].transforms[0].rotation = traj_msg_.points[1].transforms[0].rotation;
   }
 
   writeFile(traj);
