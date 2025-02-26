@@ -4,7 +4,8 @@ optimization:
   rho_t: 25.0
   rho_v: 200.0
   rho_a: 200.0
-  vmax: 3.9
+  vmax: 3.9 # 4mps config
+  # vmax: 3.0 # 3mps config
   amax: 2.0
   max_iter: 500
   M: 5

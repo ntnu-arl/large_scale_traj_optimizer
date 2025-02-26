@@ -4,8 +4,9 @@ optimization:
   rho_t: 2.5
   rho_v: 200.0
   rho_a: 200.0
-  vmax: 3.9
-  amax: 2.0
+  vmax: 3.9 # 4mps config
+  # vmax: 3.0 # 3mps config
+  amax: 1.0 # to reduce yaw rate
   max_iter: 500
   M: 5
 
@@ -15,7 +16,7 @@ align_yaw: true
 rotate_xy: true
 
 scale_x: 25.0
-scale_y: 2.0
+scale_y: 4.0
 omega: 1.0
 num_loops: 3.0
 wp_dt: 0.25
