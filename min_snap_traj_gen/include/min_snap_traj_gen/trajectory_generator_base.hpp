@@ -4,7 +4,7 @@
 #include "traj_min_snap.hpp"
 
 #include "min_snap_traj_gen/trajectory.hpp"
-// TODO: replace with more lightweight optimzier
+// TODO: replace with lightweight optimzier
 #include "thirdparty/alglib-cpp/src/stdafx.h"
 #include "thirdparty/alglib-cpp/src/optimization.h"
 

@@ -233,7 +233,7 @@ void TrajectoryGeneratorBase::updateMessages()
 {
   std_msgs::Header header;
   header.frame_id = frame_id_;
-  header.stamp = ros::Time::now();  // REVIEW: not synchronized? Does it matter?
+  header.stamp = ros::Time::now();  // TODO: not synchronized? Does it matter?
 
   geometry_msgs::PoseStamped ps;
   ps.header = header;
@@ -262,6 +262,7 @@ void TrajectoryGeneratorBase::updateMessages()
   traj.reserve(approx_size);
   path_msg_.poses.reserve(approx_size);
   traj_msg_.points.reserve(approx_size);
+  double max_yaw_rate = 0.0;
   while (time < duration)
   {
     const Eigen::Vector3d p = minJerkTraj_.getPos(time);
@@ -278,9 +279,10 @@ void TrajectoryGeneratorBase::updateMessages()
     {
       yaw = std::atan2(vy, vx);
       yaw_rate = (vx * ay - vy * ax) / (vx * vx + vy * vy);
+      max_yaw_rate = std::max(max_yaw_rate, std::abs(yaw_rate));
     }
 
-    traj.add(time, p, v, a);
+    traj.add(time, p, v, a, yaw, yaw_rate);
 
     fillPose(p, yaw, ps.pose);
     path_msg_.poses.push_back(ps);
@@ -290,6 +292,14 @@ void TrajectoryGeneratorBase::updateMessages()
     traj_msg_.points.push_back(tp);
 
     time += dt_;
+  }
+
+  // TODO: should first yaw be aligned with second yaw? Bc first yaw always starts 0
+  // TODO: rviz buttons
+
+  if (align_yaw_)
+  {
+    std::cout << "\tmax yaw rate: " << max_yaw_rate * 180.0 / M_PI << " deg" << '\n';
   }
 
   writeFile(traj);
@@ -404,16 +414,18 @@ void TrajectoryGeneratorBase::writeFile(const Trajectory& traj, const std::strin
   if (file != NULL)
   {
     ROS_INFO("Writing to: %s", file_name.c_str());
-    fprintf(file, "time,px,py,pz,vx,vy,vz,ax,ay,az\n");
+    fprintf(file, "time,px,py,pz,vx,vy,vz,ax,ay,az,yaw,yaw_rate\n");
     for (size_t i = 0; i < traj.size(); ++i)
     {
       const double time = traj.getTime(i);
       const Eigen::Vector3d pos = traj.getPos(i);
       const Eigen::Vector3d vel = traj.getVel(i);
       const Eigen::Vector3d acc = traj.getAcc(i);
+      const double yaw = traj.getYaw(i);
+      const double yaw_rate = traj.getYawRate(i);
 
-      fprintf(file, "%f, %f, %f, %f, %f, %f, %f, %f, %f, %f\n", time, pos(0), pos(1), pos(2), vel(0), vel(1), vel(2),
-              acc(0), acc(1), acc(2));
+      fprintf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n", time, pos(0), pos(1), pos(2), vel(0), vel(1), vel(2),
+              acc(0), acc(1), acc(2), yaw, yaw_rate);
     }
   }
   fclose(file);
