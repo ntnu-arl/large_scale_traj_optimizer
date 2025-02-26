@@ -27,6 +27,8 @@ Panels:
     Name: Time
     SyncMode: 0
     SyncSource: ""
+  - Class: srv_buttons/SRV Buttons
+    Name: SRV Buttons
 Preferences:
   PromptSaveOnExit: true
 Toolbars:

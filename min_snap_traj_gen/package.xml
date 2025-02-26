@@ -17,5 +17,7 @@
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>trajectory_msgs</depend>
+  <depend>multi_dof_joint_trajectory_rviz_plugins</depend>
+  <depend>srv_buttons</depend>
 
 </package>

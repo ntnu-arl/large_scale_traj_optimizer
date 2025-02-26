@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find min_snap_gen)/rviz/default.rviz" clear_params="true" output="screen">
+    <rosparam command="load" file="$(find min_snap_gen)/config/rviz.yaml" />
+  </node>
+</launch>

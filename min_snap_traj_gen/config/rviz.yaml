@@ -1,0 +1,7 @@
+SRV_NAMES:
+  takeoff: /min_snap_traj/takeoff
+  start: /min_snap_traj/start
+
+SRV_TYPES:
+  takeoff: Empty
+  start: Empty
