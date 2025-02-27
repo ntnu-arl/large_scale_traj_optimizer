@@ -84,6 +84,7 @@ private:
   double dt_;
   Eigen::Vector3d offset_;
   bool align_yaw_;
+  bool add_yaw_rate_;
   bool rotate_xy_;  // flip x and y (i.e. rotate waypoints by 90 deg)
 
   std::string frame_id_;
@@ -91,11 +92,15 @@ private:
   int max_iter_;
   int M_;  // recommended 3 <= M <= 7
 
+  bool start_with_pose_;  // TODO: parameter for start with pose
+  std::string pose_topic_;
+
   nav_msgs::Path wp_msg_;
   nav_msgs::Path path_msg_;
   trajectory_msgs::MultiDOFJointTrajectory takeoff_msg_;
   trajectory_msgs::MultiDOFJointTrajectory traj_msg_;
 
+  ros::NodeHandle pnh_;
   ros::Publisher pub_waypoints_;
   ros::Publisher pub_path_;
   ros::Publisher pub_trajectory_;

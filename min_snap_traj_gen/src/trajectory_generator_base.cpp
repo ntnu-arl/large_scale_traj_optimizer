@@ -84,7 +84,20 @@ TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
   offset_ << d_param[0], d_param[1], d_param[2];
   pnh.param<std::string>("frame_id", frame_id_, "map");
   pnh.param<bool>("align_yaw", align_yaw_, true);
+  pnh.param<bool>("add_yaw_rate", add_yaw_rate_, false);
   pnh.param<bool>("rotate_xy", rotate_xy_, false);
+  pnh.param<bool>("start_with_pose", start_with_pose_, false);
+  pnh.param<std::string>("pose_topic", pose_topic_, "/mavros/local_position/pose");
+
+  // getting start position
+  if (start_with_pose_)
+  {  // REVIEW: maybe do in constructor
+    ROS_INFO("Waiting for pose on %s", pose_topic_.c_str());
+    geometry_msgs::PoseStamped msg;
+    msg = *ros::topic::waitForMessage<geometry_msgs::PoseStamped>(pose_topic_, pnh_);
+
+    waypoint_vector_.emplace_back(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
+  }
 
   // publishers
   pub_waypoints_ = pnh.advertise<nav_msgs::Path>("waypoints", 1, true);
@@ -278,7 +291,7 @@ void TrajectoryGeneratorBase::updateMessages()
     if (align_yaw_)
     {
       yaw = std::atan2(vy, vx);
-      yaw_rate = (vx * ay - vy * ax) / (vx * vx + vy * vy);
+      yaw_rate = add_yaw_rate_ ? (vx * ay - vy * ax) / (vx * vx + vy * vy) : 0.0;
       max_yaw_rate = std::max(max_yaw_rate, std::abs(yaw_rate));
     }
 
@@ -298,9 +311,12 @@ void TrajectoryGeneratorBase::updateMessages()
   {
     std::cout << "\tmax yaw rate: " << max_yaw_rate * 180.0 / M_PI << " deg" << '\n';
     // set first yaw equal to second, so takeoff matches
-    traj.setYaw(0, traj.getYaw(1));
-    path_msg_.poses[0].pose.orientation = path_msg_.poses[1].pose.orientation;
-    traj_msg_.points[0].transforms[0].rotation = traj_msg_.points[1].transforms[0].rotation;
+    double yaw = traj.getYaw(1);
+    traj.setYaw(0, yaw);
+    tf2::Quaternion q;
+    q.setRPY(0.0, 0.0, yaw);
+    path_msg_.poses[0].pose.orientation = tf2::toMsg(q);
+    traj_msg_.points[0].transforms[0].rotation = tf2::toMsg(q);
   }
 
   writeFile(traj);
@@ -312,7 +328,12 @@ bool TrajectoryGeneratorBase::optimize()
   times_ = Eigen::VectorXd(time_vector_.size());
   waypoints_ = Eigen::MatrixXd(3, waypoint_vector_.size());
 
-  iS_.col(0) += offset_;
+  // add offset
+  // TODO: separate function?
+  if (!start_with_pose_)
+  {
+    iS_.col(0) += offset_;
+  }
   fS_.col(0) += offset_;
   for (size_t i = 0; i < waypoint_vector_.size(); ++i)
   {

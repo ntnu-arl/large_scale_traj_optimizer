@@ -13,6 +13,7 @@ optimization:
 traj_dt: 0.05
 offset: [0, 0, 1.5]
 align_yaw: true
+add_yaw_rate: true
 rotate_xy: true
 
 scale_x: 25.0
@@ -20,3 +21,7 @@ scale_y: 4.0
 omega: 1.0
 num_loops: 3.0
 wp_dt: 0.25
+height_gain: 0.0
+
+start_with_pose: false
+pose_topic: "/mavros/local_position/pose"

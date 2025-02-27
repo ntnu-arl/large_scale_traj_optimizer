@@ -13,6 +13,7 @@ optimization:
 traj_dt: 0.05
 offset: [0, 0, 1.5]
 align_yaw: true
+add_yaw_rate: true
 rotate_xy: false
 
 radius: 1.0
@@ -20,3 +21,6 @@ length: 50.0
 num_loops: 3.0
 linear_spacing: 4.0
 num_circle_points: 1
+
+start_with_pose: false
+pose_topic: "/mavros/local_position/pose"
