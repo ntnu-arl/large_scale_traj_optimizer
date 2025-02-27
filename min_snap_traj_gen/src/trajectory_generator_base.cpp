@@ -89,7 +89,7 @@ TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
   // publishers
   pub_waypoints_ = pnh.advertise<nav_msgs::Path>("waypoints", 1, true);
   pub_path_ = pnh.advertise<nav_msgs::Path>("path", 1, true);
-  pub_trajectory_ = pnh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 1, true);
+  pub_trajectory_ = pnh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 1, false);
 
   // services
   srv_takeoff_ = pnh.advertiseService("takeoff", &TrajectoryGeneratorBase::takeoffService, this);

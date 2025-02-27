@@ -1,5 +1,7 @@
 <launch>
   <node pkg="min_snap_gen" type="lemniscate_node" name="min_snap_traj" output="screen" clear_params="true">
     <rosparam file="$(find min_snap_gen)/config/lemniscate.yaml" command="load"/>
+
+    <remap from="/min_snap_traj/trajectory" to="/mavros/setpoint_trajectory/local" />
   </node>
 </launch>
