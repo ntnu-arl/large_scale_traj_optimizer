@@ -288,7 +288,7 @@ void TrajectoryGeneratorBase::updateMessages()
     path_msg_.poses.push_back(ps);
 
     // REVIEW: time or time+dt
-    fillMultiDOFTrajectoryPoint(p, v, a, yaw, yaw_rate, time + dt_, tp);
+    fillMultiDOFTrajectoryPoint(p, v, a, yaw, yaw_rate, dt_, tp);
     traj_msg_.points.push_back(tp);
 
     time += dt_;
