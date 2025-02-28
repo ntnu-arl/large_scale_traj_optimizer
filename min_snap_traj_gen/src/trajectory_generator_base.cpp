@@ -152,7 +152,7 @@ void TrajectoryGeneratorBase::fillMultiDOFTrajectoryPoint(const Eigen::Vector3d&
   vel_msg.linear.z = vel(2);
   vel_msg.angular.x = 0.0;
   vel_msg.angular.y = 0.0;
-  vel_msg.angular.z = std::isnan(yaw_rate) ? 0.0 : yaw_rate;
+  vel_msg.angular.z = std::isnan(yaw_rate) ? 0.0 : -yaw_rate;
 
   geometry_msgs::Twist acc_msg;
   acc_msg.linear.x = acc(0);
