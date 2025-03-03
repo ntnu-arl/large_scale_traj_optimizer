@@ -83,6 +83,8 @@ TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
   pnh.param<std::vector<double>>("offset", d_param, { 0, 0, 1.5 });
   offset_ << d_param[0], d_param[1], d_param[2];
   pnh.param<std::string>("frame_id", frame_id_, "map");
+  pnh.param<double>("yaw_deg", yaw_, 0.0);
+  yaw_ = yaw_ * M_PI / 180.0;
   pnh.param<bool>("align_yaw", align_yaw_, true);
   pnh.param<bool>("add_yaw_rate", add_yaw_rate_, false);
   pnh.param<bool>("rotate_xy", rotate_xy_, false);
@@ -286,7 +288,7 @@ void TrajectoryGeneratorBase::updateMessages()
     const double vy = v(1);
     const double ax = a(0);
     const double ay = a(1);
-    double yaw = 0.0;
+    double yaw = yaw_;
     double yaw_rate = 0.0;
     if (align_yaw_)
     {

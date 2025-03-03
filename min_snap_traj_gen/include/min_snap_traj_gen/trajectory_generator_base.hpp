@@ -83,6 +83,7 @@ private:
 
   double dt_;
   Eigen::Vector3d offset_;
+  double yaw_;
   bool align_yaw_;
   bool add_yaw_rate_;
   bool rotate_xy_;  // flip x and y (i.e. rotate waypoints by 90 deg)

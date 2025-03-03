@@ -12,6 +12,7 @@ optimization:
 
 traj_dt: 0.02
 offset: [0, 0, 1.0]
+yaw_deg: 45.0
 align_yaw: true
 add_yaw_rate: true
 rotate_xy: false
