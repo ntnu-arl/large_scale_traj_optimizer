@@ -17,9 +17,9 @@ add_yaw_rate: true
 rotate_xy: false
 
 radius: 1.0
-length: 50.0
+length: 40.0
 num_loops: 3.0
-linear_spacing: 1.0
+linear_spacing: 2.0
 num_circle_points: 1
 
 start_with_pose: false
