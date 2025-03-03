@@ -25,7 +25,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: ""
   - Class: srv_buttons/SRV Buttons
     Name: SRV Buttons
 Preferences:
@@ -136,7 +136,7 @@ Visualization Manager:
       Color Velocity Angular: 0; 102; 0
       Color Velocity Linear: 102; 0; 0
       Diameter Arrows: 0.05000000074505806
-      Enabled: true
+      Enabled: false
       Font Size: 0.05000000074505806
       History Length: 1
       Name: MultiDOFJointTrajectory
@@ -155,7 +155,7 @@ Visualization Manager:
       Size Transform Rotation: 0.20000000298023224
       Topic: /mavros/setpoint_trajectory/local
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -266,5 +266,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 2822
-  Y: 905
+  X: 0
+  Y: 27
