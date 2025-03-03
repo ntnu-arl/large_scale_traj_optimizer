@@ -10,7 +10,7 @@ optimization:
   max_iter: 500
   M: 5
 
-traj_dt: 0.05
+traj_dt: 0.02
 offset: [0, 0, 1.5]
 align_yaw: true
 add_yaw_rate: true
