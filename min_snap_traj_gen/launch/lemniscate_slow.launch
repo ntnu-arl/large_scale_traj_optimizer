@@ -1,6 +1,6 @@
 <launch>
-  <node pkg="min_snap_gen" type="rounded_rectangle_node" name="min_snap_traj" output="screen" clear_params="true">
-    <rosparam file="$(find min_snap_gen)/config/rounded_rectangle.yaml" command="load"/>
+  <node pkg="min_snap_gen" type="lemniscate_node" name="min_snap_traj" output="screen" clear_params="true">
+    <rosparam file="$(find min_snap_gen)/config/lemniscate.yaml" command="load"/>
     <param name="optimization/vmax" value="2.0" />
     <param name="num_loops" value="1.0" />
 

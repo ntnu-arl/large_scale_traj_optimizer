@@ -1,17 +1,17 @@
 frame_id: "map"
 
 optimization:
-  rho_t: 25.0
+  rho_t: 250.0
   rho_v: 200.0
   rho_a: 200.0
-  vmax: 3.9 # 4mps config
+  vmax: 4.0 # 4mps config
   # vmax: 3.0 # 3mps config
-  amax: 2.0
+  amax: 3.0
   max_iter: 500
   M: 5
 
 traj_dt: 0.02
-offset: [0, 0, 1.5]
+offset: [0, 0, 1.0]
 yaw_deg: 45.0
 align_yaw: true
 add_yaw_rate: true
@@ -20,9 +20,9 @@ rotate_xy: false
 scale_x: 2.0
 scale_y: 2.0
 omega: 1.0
-num_loops: 3.0
+num_loops: 3
 wp_dt: 0.25
-height_gain: 3.0
+height_gain: 5.0
 
 start_with_pose: false
 pose_topic: "/mavros/local_position/pose"

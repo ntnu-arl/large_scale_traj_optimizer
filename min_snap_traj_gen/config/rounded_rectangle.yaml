@@ -5,7 +5,7 @@ optimization:
   rho_v: 200.0
   rho_a: 200.0
   vmax: 3.9 # 4mps config
-  # vmax: 2.9 # 3mps config
+  # vmax: 3.0 # 3mps config
   amax: 2.0
   max_iter: 500
   M: 5
@@ -13,13 +13,13 @@ optimization:
 traj_dt: 0.02
 offset: [0, 0, 1.0]
 yaw_deg: 45.0
-align_yaw: true
+align_yaw: false
 add_yaw_rate: true
 rotate_xy: false
 
 radius: 1.0
 length: 40.0
-num_loops: 3.0
+num_loops: 4.0
 linear_spacing: 2.0
 num_circle_points: 1
 
