@@ -1,7 +1,9 @@
 SRV_NAMES:
+  optimize: /min_snap_traj/optimize
   takeoff: /min_snap_traj/takeoff
   start: /min_snap_traj/start
 
 SRV_TYPES:
+  optimize: Empty
   takeoff: Empty
   start: Empty

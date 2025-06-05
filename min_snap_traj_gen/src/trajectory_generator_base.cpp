@@ -48,7 +48,12 @@ void objectiveFunction(const alglib::real_1d_array& x, double& func, void* ptr)
   }
   double J_D_v = 0;
   double J_D_a = 0;
+
+  // ROS_INFO("num_pieces: %i\twaypoints.size: %i\t times.size: %i", num_pieces_, waypoints_.cols(), times_.size());
   for (int i = 0; i < num_pieces_ - 1; ++i)
+  // i => 0 -> 17 (< 19-1)
+  // j = i+1
+  // j => 1 -> 18
   {
     // T_{i} corresponds to q_{i} to q_{i+1} instead of q_{i-1} to q_{i}
     const int j = i + 1;
@@ -62,8 +67,10 @@ void objectiveFunction(const alglib::real_1d_array& x, double& func, void* ptr)
     J_D_v += g(((q_ip1 - q_im1) / (T_ip1 + T_i)).squaredNorm() - vmax2);
     J_D_a += g((((q_ip1 - q_i) / T_ip1 - (q_i - q_im1) / T_i) / ((T_ip1 + T_i) / 2.0)).squaredNorm() - amax2);
   }
-  // std::cout << "sigma/t/v/a: " << J_sigma << '\t' << J_D_t << '\t' << J_D_v << '\t' << J_D_a << '\n';
+
   const double J_D = rho_t_ * J_D_t + rho_v_ * J_D_v + rho_a_ * J_D_a;
+
+  // ROS_INFO("J_sigma: %f\tJ_D_t: %f\tJ_D_v: %f\tJ_D_a: %f", J_sigma, J_D_t, J_D_v, J_D_a);
 
   func = J_sigma + J_D;
 }
@@ -107,6 +114,7 @@ TrajectoryGeneratorBase::TrajectoryGeneratorBase(ros::NodeHandle& pnh)
   pub_trajectory_ = pnh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 1, false);
 
   // services
+  srv_optimize_ = pnh.advertiseService("optimize", &TrajectoryGeneratorBase::optimizeService, this);
   srv_takeoff_ = pnh.advertiseService("takeoff", &TrajectoryGeneratorBase::takeoffService, this);
   srv_start_ = pnh.advertiseService("start", &TrajectoryGeneratorBase::startService, this);
 
@@ -233,7 +241,15 @@ double TrajectoryGeneratorBase::interpolateHeight(const double time, const doubl
 
 void TrajectoryGeneratorBase::run()
 {
+  waypoint_vector_.clear();
+  time_vector_.clear();
+
   updateWaypoints();
+  if (waypoint_vector_.empty())
+  {
+    ROS_ERROR("waypoint_vector_ is empty");
+    return;
+  }
   updateStartFinish();
   if (rotate_xy_)
   {
@@ -256,11 +272,11 @@ void TrajectoryGeneratorBase::updateMessages()
   const Eigen::MatrixXd positions = minJerkTraj_.getPositions();
 
   wp_msg_.header = header;
-  wp_msg_.poses.reserve(positions.cols());
+  wp_msg_.poses.resize(positions.cols());
   for (int i = 0; i < positions.cols(); ++i)
   {
     fillPose(positions.col(i), ps.pose);
-    wp_msg_.poses.push_back(ps);
+    wp_msg_.poses[i] = ps;
   }
 
   Trajectory traj;
@@ -275,7 +291,9 @@ void TrajectoryGeneratorBase::updateMessages()
   const int approx_size = int(duration / dt_);
 
   traj.reserve(approx_size);
+  path_msg_.poses.clear();
   path_msg_.poses.reserve(approx_size);
+  traj_msg_.points.clear();
   traj_msg_.points.reserve(approx_size);
   double max_yaw_rate = 0.0;
   while (time < duration)
@@ -354,6 +372,11 @@ bool TrajectoryGeneratorBase::optimize()
     ROS_INFO("Optimizing with %li waypoints", waypoint_vector_.size());
     std::cout << "iS_: \n" << iS_ << "\nfS_:\n" << fS_ << '\n';
 
+    if (M_ >= (int)waypoint_vector_.size())
+    {
+      M_ = (int)waypoint_vector_.size() - 1;
+    }
+
     // TODO: set better stopping criteria
     double epsg = 0.0000000001;
     double epsf = 0;
@@ -370,8 +393,38 @@ bool TrajectoryGeneratorBase::optimize()
     alglib::minlbfgsresults(state, x, rep);
     const auto toc = std::chrono::high_resolution_clock::now();
 
-    ROS_INFO("Optimization results:\n\tterminationType: %d\n\titerationsCount: %d\n\tduration: %li ms",
-             int(rep.terminationtype), int(rep.iterationscount),
+    // taken from: https://www.alglib.net/translator/man/manual.cpp.html#sub_mincgresults
+    std::string termination_string;
+    switch (rep.terminationtype)
+    {
+      case -8:
+        termination_string = "internal integrity control detected infinite or NAN values in function/gradient";
+        break;
+      case 1:
+        termination_string = "relative function improvement is no more than EpsF";
+        break;
+      case 2:
+        termination_string = "relative step is no more than EpsX";
+        break;
+      case 4:
+        termination_string = "gradient norm is no more than EpsG";
+        break;
+      case 5:
+        termination_string = "MaxIts steps was taken";
+        break;
+      case 7:
+        termination_string = "stopping conditions are too stringent";
+        break;
+      case 8:
+        termination_string = "terminated by user who called minlbfgsrequesttermination()";
+        break;
+      default:
+        termination_string = "invalid termination type";
+        break;
+    }
+
+    ROS_INFO("Optimization results:\n\tterminationType: %d (%s)\n\titerationsCount: %d\n\tduration: %li ms",
+             int(rep.terminationtype), termination_string.c_str(), int(rep.iterationscount),
              std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count());
     ROS_INFO("Trajectory stats:\n\tduration: %f s\n\tmax_vel: %f m/s\n\tmax_acc: %f m/s^2",
              minJerkTraj_.getTotalDuration(), minJerkTraj_.getMaxVelRate(), minJerkTraj_.getMaxAccRate());
@@ -389,6 +442,11 @@ bool TrajectoryGeneratorBase::optimize()
 
 void TrajectoryGeneratorBase::publishOnTimer()
 {
+  if (wp_msg_.poses.empty() || path_msg_.poses.empty())
+  {
+    return;
+  }
+
   pub_waypoints_.publish(wp_msg_);
   pub_path_.publish(path_msg_);
 
@@ -396,6 +454,14 @@ void TrajectoryGeneratorBase::publishOnTimer()
   {
     pub_trajectory_.publish(takeoff_msg_);
   }
+}
+
+bool TrajectoryGeneratorBase::optimizeService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response)
+{
+  ROS_INFO("Optimize service");
+  run();  // TODO: expand
+
+  return true;
 }
 
 bool TrajectoryGeneratorBase::takeoffService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response)

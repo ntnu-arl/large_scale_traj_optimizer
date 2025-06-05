@@ -59,3 +59,10 @@ add_executable(ellipse_node
   ${ALGLIB_SRC}
 )
 target_link_libraries(ellipse_node ${catkin_LIBRARIES})
+
+add_executable(connect_dots_node
+  src/connect_dots_node.cpp
+  src/trajectory_generator_base.cpp
+  ${ALGLIB_SRC}
+)
+target_link_libraries(connect_dots_node ${catkin_LIBRARIES})

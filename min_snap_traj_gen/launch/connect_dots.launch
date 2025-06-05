@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="min_snap_gen" type="connect_dots_node" name="min_snap_traj" output="screen" clear_params="true">
+    <rosparam file="$(find min_snap_gen)/config/connect_dots.yaml" command="load"/>
+
+    <remap from="/min_snap_traj/trajectory" to="/mavros/setpoint_trajectory/local" />
+  </node>
+</launch>

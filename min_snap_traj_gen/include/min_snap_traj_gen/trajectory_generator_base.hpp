@@ -73,6 +73,7 @@ private:
 
   void updateMessages();
   void publishOnTimer();
+  bool optimizeService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
   bool takeoffService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
   bool startService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
 
@@ -106,6 +107,7 @@ private:
   ros::Publisher pub_path_;
   ros::Publisher pub_trajectory_;
 
+  ros::ServiceServer srv_optimize_;
   ros::ServiceServer srv_takeoff_;
   ros::ServiceServer srv_start_;
 
