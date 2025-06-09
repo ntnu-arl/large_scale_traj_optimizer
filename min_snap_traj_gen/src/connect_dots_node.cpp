@@ -11,15 +11,17 @@ ConnectDots::ConnectDots(ros::NodeHandle& pnh) : TrajectoryGeneratorBase(pnh)
   sub_marker_ =
       pnh.subscribe<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10, &ConnectDots::markerCallback, this);
 
-  // // for debugging
-  // geometry_msgs::Pose pose;
-  // pose.position.x = 25;
-  // pose_array_.poses.push_back(pose);
-  // pose.position.x = -25;
-  // pose_array_.poses.push_back(pose);
-  // pose_array_.header.frame_id = "map";
-  // pose_array_.header.stamp = ros::Time::now();
-  // pub_markers_.publish(pose_array_);
+  // for debugging
+  geometry_msgs::Pose pose;
+  pose.position.x = 23;
+  pose.position.y = 4.5;
+  pose_array_.poses.push_back(pose);
+  pose.position.x = -16;
+  pose.position.y = -1;
+  pose_array_.poses.push_back(pose);
+  pose_array_.header.frame_id = "map";
+  pose_array_.header.stamp = ros::Time::now();
+  pub_markers_.publish(pose_array_);
 }
 
 void ConnectDots::markerCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -61,7 +63,7 @@ int main(int argc, char** argv)
 
   ConnectDots node(pnh);
   // // for debugging
-  // node.run();
+  node.run();
 
   ros::spin();
 

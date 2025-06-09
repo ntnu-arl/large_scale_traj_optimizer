@@ -3,7 +3,13 @@ frame_id: "map"
 optimization:
   rho_v: 200.0
   rho_a: 200.0
-  amax: 4.0
+  # amax: 4.0
+
+  # rho_t: 150.0
+  # vmax: 4.0
+
+  # rho_t: 140.0
+  # vmax: 5.0
 
   # rho_t: 110.0
   # vmax: 6.0
@@ -17,14 +23,27 @@ optimization:
   # rho_t: 50.0
   # vmax: 9.0
 
-  rho_t: 40.0
+  # rho_t: 40.0
+  # vmax: 10.0
+
+  amax: 7.0
+  # rho_t: 400.0
+  # vmax: 6.0
+
+  rho_t: 340.0
   vmax: 10.0
+
+  # rho_t: 290.0
+  # vmax: 11.0
+
+  # rho_t: 230.0
+  # vmax: 12.0
 
   max_iter: 1000
   M: 5
 
 traj_dt: 0.02
-offset: [0, 0, 1.5]
+offset: [0, 0, 3]
 yaw_deg: 0.0
 align_yaw: false
 add_yaw_rate: true
